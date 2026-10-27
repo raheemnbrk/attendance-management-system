@@ -71,6 +71,16 @@ export const employeeReportQuerySchema = z
     path: ["from"],
   });
 
+export const trendQuerySchema = z.object({
+  days: z.coerce
+    .number()
+    .int("days must be an integer")
+    .refine((value) => value === 7 || value === 30, {
+      message: "days must be 7 or 30",
+    })
+    .default(7),
+});
+
 export type CheckInInput = z.infer<typeof checkInSchema>;
 export type HistoryQuery = z.infer<typeof historyQuerySchema>;
 export type EmployeeListQuery = z.infer<typeof employeeListQuerySchema>;
@@ -78,3 +88,4 @@ export type EmployeeHistoryQuery = z.infer<typeof historyQuerySchema>;
 export type SummaryQuery = z.infer<typeof summaryQuerySchema>;
 export type MonthlyReportQuery = z.infer<typeof monthlyReportQuerySchema>;
 export type EmployeeReportQuery = z.infer<typeof employeeReportQuerySchema>;
+export type TrendQuery = z.infer<typeof trendQuerySchema>;

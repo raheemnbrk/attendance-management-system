@@ -12,6 +12,7 @@ import {
   myHistoryHandler,
   summaryHandler,
   todayHandler,
+  trendHandler,
 } from "./attendance.controller";
 import { checkInSchema } from "./attendance.schema";
 
@@ -31,3 +32,4 @@ attendanceRouter.get("/summary", ...employerOnly, summaryHandler);
 
 attendanceRouter.get("/reports/monthly", ...employerOnly, monthlyReportHandler);
 attendanceRouter.get("/reports/employee/:employeeId", ...employerOnly, employeeReportHandler);
+attendanceRouter.get("/trend", ...employerOnly, trendHandler);

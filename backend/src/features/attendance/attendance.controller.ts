@@ -9,6 +9,7 @@ import {
   getEmployerEmployeeAttendance,
   getMonthlyReport,
   getToday,
+  getTrend,
   listEmployerAttendance,
   listMyAttendance,
 } from "./attendance.service";
@@ -18,6 +19,7 @@ import {
   historyQuerySchema,
   monthlyReportQuerySchema,
   summaryQuerySchema,
+  trendQuerySchema,
 } from "./attendance.schema";
 import type { CheckInInput } from "./attendance.schema";
 
@@ -77,3 +79,9 @@ export const employeeReportHandler = asyncHandler(
     res.status(200).json({ success: true, data: result });
   },
 );
+
+export const trendHandler = asyncHandler(async (req: Request, res: Response) => {
+  const query = trendQuerySchema.parse(req.query);
+  const result = await getTrend(req.user!.id, query.days);
+  res.status(200).json({ success: true, data: result });
+});

@@ -437,3 +437,41 @@ export async function getEmployeeReport(
     records: records.map(mapAttendance),
   };
 }
+
+export type TrendDay = {
+  date: string;
+  present: number;
+  absent: number;
+};
+
+export async function getTrend(employerId: string, days: number): Promise<TrendDay[]> {
+  const today = todayISO();
+  // Rolling window ending today, inclusive of both ends.
+  const from = isoAddDays(today, -(days - 1));
+  const employeeFilter = { employerId, role: "EMPLOYEE" as const, isActive: true };
+
+  const [totalEmployees, presentCounts] = await Promise.all([
+    prisma.user.count({ where: employeeFilter }),
+    prisma.attendance.groupBy({
+      by: ["date"],
+      where: {
+        user: employeeFilter,
+        date: { gte: isoToUtcMidnight(from), lte: isoToUtcMidnight(today) },
+      },
+      _count: { _all: true },
+    }),
+  ]);
+
+  const presentByDate = new Map<string, number>();
+  for (const entry of presentCounts) {
+    presentByDate.set(utcDateToISO(entry.date), entry._count._all);
+  }
+
+  const trend: TrendDay[] = [];
+  for (let day = from; day <= today; day = isoAddDays(day, 1)) {
+    const present = presentByDate.get(day) ?? 0;
+    trend.push({ date: day, present, absent: totalEmployees - present });
+  }
+
+  return trend;
+}
