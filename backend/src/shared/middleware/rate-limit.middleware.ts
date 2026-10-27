@@ -79,3 +79,10 @@ export const employerWriteLimiter = createUserRateLimiter({
   windowMs: 60 * 1000,
   limit: env.RATE_LIMIT_EMPLOYER_WRITE_MAX,
 });
+
+// Apply AFTER `authenticate` on GET /api/attendance/export and GET
+// /api/attendance/reports/monthly/export so file downloads stay cheap.
+export const exportLimiter = createUserRateLimiter({
+  windowMs: 60 * 1000,
+  limit: env.RATE_LIMIT_EXPORT_MAX,
+});

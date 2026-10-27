@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { authenticate, requireApproved, requireRole } from "../../shared/middleware/auth.middleware";
-import { attendanceLimiter } from "../../shared/middleware/rate-limit.middleware";
+import { attendanceLimiter, exportLimiter } from "../../shared/middleware/rate-limit.middleware";
 import { validate } from "../../shared/middleware/validate.middleware";
 import {
   attendanceExportHandler,
@@ -33,7 +33,12 @@ attendanceRouter.get("/employees/:employeeId", ...employerOnly, employeeHistoryH
 attendanceRouter.get("/summary", ...employerOnly, summaryHandler);
 
 attendanceRouter.get("/reports/monthly", ...employerOnly, monthlyReportHandler);
-attendanceRouter.get("/reports/monthly/export", ...employerOnly, monthlyReportExportHandler);
+attendanceRouter.get(
+  "/reports/monthly/export",
+  ...employerOnly,
+  exportLimiter,
+  monthlyReportExportHandler,
+);
 attendanceRouter.get("/reports/employee/:employeeId", ...employerOnly, employeeReportHandler);
 attendanceRouter.get("/trend", ...employerOnly, trendHandler);
-attendanceRouter.get("/export", ...employerOnly, attendanceExportHandler);
+attendanceRouter.get("/export", ...employerOnly, exportLimiter, attendanceExportHandler);
