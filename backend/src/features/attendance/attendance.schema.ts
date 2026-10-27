@@ -49,8 +49,32 @@ export const summaryQuerySchema = z.object({
   date: isoDateSchema.optional(),
 });
 
+export const monthSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}$/, "Month must be in YYYY-MM format")
+  .refine((value) => {
+    const month = Number(value.slice(5, 7));
+    return month >= 1 && month <= 12;
+  }, { message: "Month must be a valid calendar month" });
+
+export const monthlyReportQuerySchema = z.object({
+  month: monthSchema,
+});
+
+export const employeeReportQuerySchema = z
+  .object({
+    from: isoDateSchema.optional(),
+    to: isoDateSchema.optional(),
+  })
+  .refine((data) => !data.from || !data.to || data.from <= data.to, {
+    message: "from must be before or equal to to",
+    path: ["from"],
+  });
+
 export type CheckInInput = z.infer<typeof checkInSchema>;
 export type HistoryQuery = z.infer<typeof historyQuerySchema>;
 export type EmployeeListQuery = z.infer<typeof employeeListQuerySchema>;
 export type EmployeeHistoryQuery = z.infer<typeof historyQuerySchema>;
 export type SummaryQuery = z.infer<typeof summaryQuerySchema>;
+export type MonthlyReportQuery = z.infer<typeof monthlyReportQuerySchema>;
+export type EmployeeReportQuery = z.infer<typeof employeeReportQuerySchema>;

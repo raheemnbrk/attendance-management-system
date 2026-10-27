@@ -7,6 +7,8 @@ import {
   checkOutHandler,
   employeeHistoryHandler,
   employeeListHandler,
+  employeeReportHandler,
+  monthlyReportHandler,
   myHistoryHandler,
   summaryHandler,
   todayHandler,
@@ -26,3 +28,6 @@ attendanceRouter.get("/me", ...employeeOnly, myHistoryHandler);
 attendanceRouter.get("/employees", ...employerOnly, employeeListHandler);
 attendanceRouter.get("/employees/:employeeId", ...employerOnly, employeeHistoryHandler);
 attendanceRouter.get("/summary", ...employerOnly, summaryHandler);
+
+attendanceRouter.get("/reports/monthly", ...employerOnly, monthlyReportHandler);
+attendanceRouter.get("/reports/employee/:employeeId", ...employerOnly, employeeReportHandler);

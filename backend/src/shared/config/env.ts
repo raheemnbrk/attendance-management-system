@@ -14,6 +14,11 @@ const envSchema = z.object({
   RATE_LIMIT_REGISTER_MAX: z.coerce.number().int().positive().default(5),
   RATE_LIMIT_ATTENDANCE_MAX: z.coerce.number().int().positive().default(10),
   RATE_LIMIT_EMPLOYER_WRITE_MAX: z.coerce.number().int().positive().default(30),
+  // Comma-separated weekday numbers, 0 = Sunday ... 6 = Saturday ("5,6" = Friday + Saturday).
+  WEEKEND_DAYS: z
+    .string()
+    .regex(/^(?:[0-6])(?:,[0-6])*$/, "WEEKEND_DAYS must be comma-separated weekday numbers 0-6 (0 = Sunday)")
+    .default("5,6"),
   TZ: z.string().default("Africa/Algiers"),
 }).refine((data) => {
   try {

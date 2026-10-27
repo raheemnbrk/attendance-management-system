@@ -1,13 +1,22 @@
 import { Prisma, User } from "@prisma/client";
 import { prisma } from "../../shared/lib/prisma";
 import { AppError } from "../../shared/utils/app-error";
-import { isoToUtcMidnight, todayISO, utcDateToISO } from "../../shared/utils/date";
+import {
+  isoAddDays,
+  isoToUtcMidnight,
+  listWorkingDays,
+  todayISO,
+  utcDateToISO,
+} from "../../shared/utils/date";
 import type {
   CheckInInput,
   EmployeeListQuery,
+  EmployeeReportQuery,
   HistoryQuery,
   SummaryQuery,
 } from "./attendance.schema";
+
+type AttendanceGetPayload = Prisma.AttendanceGetPayload<object>;
 
 export type AttendanceRecord = {
   id: string;
@@ -162,7 +171,7 @@ function mapAttendanceWithEmployee(
   };
 }
 
-async function findOwnedEmployeeOrThrow(employerId: string, employeeId: string): Promise<User> {
+export async function findOwnedEmployeeOrThrow(employerId: string, employeeId: string): Promise<User> {
   const employee = await prisma.user.findFirst({
     where: { id: employeeId, role: "EMPLOYEE", employerId },
   });
@@ -257,5 +266,174 @@ export async function getAttendanceSummary(employerId: string, query: SummaryQue
     present,
     absent: totalEmployees - present,
     checkedOut,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Reports (employer only)
+// ---------------------------------------------------------------------------
+
+// Last calendar day of a YYYY-MM month as YYYY-MM-DD.
+function monthLastDay(month: string): string {
+  const year = Number(month.slice(0, 4));
+  const monthIndex = Number(month.slice(5, 7));
+  const lastDay = new Date(Date.UTC(year, monthIndex, 0)).getUTCDate();
+  return `${month}-${String(lastDay).padStart(2, "0")}`;
+}
+
+type AttendanceTotals = {
+  daysPresent: number;
+  totalMinutes: number;
+  forgottenCheckOuts: number;
+};
+
+// Aggregates raw records over a set of working days. Presence on weekend days
+// does not count; totalMinutes comes only from records with a check-out, and a
+// past record without check-out counts as forgotten.
+function computeAttendanceTotals(
+  records: AttendanceGetPayload[],
+  workingDaySet: Set<string>,
+  today: string,
+): AttendanceTotals {
+  let daysPresent = 0;
+  let totalMinutes = 0;
+  let forgottenCheckOuts = 0;
+
+  for (const record of records) {
+    const date = utcDateToISO(record.date);
+
+    if (workingDaySet.has(date)) {
+      daysPresent += 1;
+    }
+
+    if (record.checkOut) {
+      totalMinutes += Math.round((record.checkOut.getTime() - record.checkIn.getTime()) / 60_000);
+    } else if (date < today) {
+      forgottenCheckOuts += 1;
+    }
+  }
+
+  return { daysPresent, totalMinutes, forgottenCheckOuts };
+}
+
+export type MonthlyReportRow = {
+  employeeId: string;
+  name: string;
+  department: string | null;
+  daysPresent: number;
+  daysAbsent: number;
+  totalMinutes: number;
+  averageMinutesPerDay: number;
+  forgottenCheckOuts: number;
+};
+
+export async function getMonthlyReport(
+  employerId: string,
+  month: string,
+): Promise<MonthlyReportRow[]> {
+  const today = todayISO();
+  const monthStart = `${month}-01`;
+  const monthEnd = monthLastDay(month);
+  // Count working days only up to today so future days are not counted as absences.
+  const rangeEnd = monthEnd < today ? monthEnd : today;
+  const workingDays = monthStart <= rangeEnd ? listWorkingDays(monthStart, rangeEnd) : [];
+
+  const [employees, records] = await Promise.all([
+    prisma.user.findMany({
+      where: { employerId, role: "EMPLOYEE" as const, isActive: true },
+      select: { id: true, name: true, department: true },
+      orderBy: { name: "asc" },
+    }),
+    prisma.attendance.findMany({
+      where: {
+        user: { employerId, role: "EMPLOYEE" as const },
+        date: { gte: isoToUtcMidnight(monthStart), lte: isoToUtcMidnight(monthEnd) },
+      },
+    }),
+  ]);
+
+  const recordsByEmployee = new Map<string, AttendanceGetPayload[]>();
+  for (const record of records) {
+    const list = recordsByEmployee.get(record.userId) ?? [];
+    list.push(record);
+    recordsByEmployee.set(record.userId, list);
+  }
+
+  return employees.map((employee) => {
+    const totals = computeAttendanceTotals(
+      recordsByEmployee.get(employee.id) ?? [],
+      new Set(workingDays),
+      today,
+    );
+
+    return {
+      employeeId: employee.id,
+      name: employee.name,
+      department: employee.department ?? null,
+      daysPresent: totals.daysPresent,
+      daysAbsent: Math.max(0, workingDays.length - totals.daysPresent),
+      totalMinutes: totals.totalMinutes,
+      averageMinutesPerDay: totals.daysPresent
+        ? Math.round(totals.totalMinutes / totals.daysPresent)
+        : 0,
+      forgottenCheckOuts: totals.forgottenCheckOuts,
+    };
+  });
+}
+
+export type EmployeeReport = {
+  employeeId: string;
+  name: string;
+  department: string | null;
+  from: string;
+  to: string;
+  workingDays: number;
+  daysPresent: number;
+  daysAbsent: number;
+  totalMinutes: number;
+  averageMinutesPerDay: number;
+  forgottenCheckOuts: number;
+  records: AttendanceRecord[];
+};
+
+export async function getEmployeeReport(
+  employerId: string,
+  employeeId: string,
+  query: EmployeeReportQuery,
+): Promise<EmployeeReport> {
+  const employee = await findOwnedEmployeeOrThrow(employerId, employeeId);
+
+  const today = todayISO();
+  // Defaults: a rolling window ending today (`to`), starting 30 days back (`from`).
+  const to = query.to ?? today;
+  const from = query.from ?? (isoAddDays(to, -29) < to ? isoAddDays(to, -29) : to);
+  const workingEnd = to < today ? to : today;
+  const workingDays = from <= workingEnd ? listWorkingDays(from, workingEnd) : [];
+
+  const records = await prisma.attendance.findMany({
+    where: {
+      userId: employeeId,
+      date: { gte: isoToUtcMidnight(from), lte: isoToUtcMidnight(to) },
+    },
+    orderBy: { date: "desc" },
+  });
+
+  const totals = computeAttendanceTotals(records, new Set(workingDays), today);
+
+  return {
+    employeeId: employee.id,
+    name: employee.name,
+    department: employee.department ?? null,
+    from,
+    to,
+    workingDays: workingDays.length,
+    daysPresent: totals.daysPresent,
+    daysAbsent: Math.max(0, workingDays.length - totals.daysPresent),
+    totalMinutes: totals.totalMinutes,
+    averageMinutesPerDay: totals.daysPresent
+      ? Math.round(totals.totalMinutes / totals.daysPresent)
+      : 0,
+    forgottenCheckOuts: totals.forgottenCheckOuts,
+    records: records.map(mapAttendance),
   };
 }
