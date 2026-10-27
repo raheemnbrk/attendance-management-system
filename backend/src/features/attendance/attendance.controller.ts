@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import type { ParamsDictionary } from "express-serve-static-core";
 import { asyncHandler } from "../../shared/utils/async-handler";
+import { exportAttendanceRecords, exportMonthlyReport } from "./attendance-export.service";
 import {
   checkIn,
   checkOut,
@@ -14,9 +15,11 @@ import {
   listMyAttendance,
 } from "./attendance.service";
 import {
+  attendanceExportQuerySchema,
   employeeListQuerySchema,
   employeeReportQuerySchema,
   historyQuerySchema,
+  monthlyReportExportQuerySchema,
   monthlyReportQuerySchema,
   summaryQuerySchema,
   trendQuerySchema,
@@ -84,4 +87,24 @@ export const trendHandler = asyncHandler(async (req: Request, res: Response) => 
   const query = trendQuerySchema.parse(req.query);
   const result = await getTrend(req.user!.id, query.days);
   res.status(200).json({ success: true, data: result });
+});
+
+function sendExportFile(res: Response, file: { filename: string; contentType: string; content: Buffer }) {
+  res
+    .status(200)
+    .setHeader("Content-Type", file.contentType)
+    .setHeader("Content-Disposition", `attachment; filename="${file.filename}"`)
+    .send(file.content);
+}
+
+export const attendanceExportHandler = asyncHandler(async (req: Request, res: Response) => {
+  const query = attendanceExportQuerySchema.parse(req.query);
+  const file = await exportAttendanceRecords(req.user!.id, query);
+  sendExportFile(res, file);
+});
+
+export const monthlyReportExportHandler = asyncHandler(async (req: Request, res: Response) => {
+  const query = monthlyReportExportQuerySchema.parse(req.query);
+  const file = await exportMonthlyReport(req.user!.id, query);
+  sendExportFile(res, file);
 });

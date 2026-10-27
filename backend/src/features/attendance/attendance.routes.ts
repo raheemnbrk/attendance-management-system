@@ -3,11 +3,13 @@ import { authenticate, requireApproved, requireRole } from "../../shared/middlew
 import { attendanceLimiter } from "../../shared/middleware/rate-limit.middleware";
 import { validate } from "../../shared/middleware/validate.middleware";
 import {
+  attendanceExportHandler,
   checkInHandler,
   checkOutHandler,
   employeeHistoryHandler,
   employeeListHandler,
   employeeReportHandler,
+  monthlyReportExportHandler,
   monthlyReportHandler,
   myHistoryHandler,
   summaryHandler,
@@ -31,5 +33,7 @@ attendanceRouter.get("/employees/:employeeId", ...employerOnly, employeeHistoryH
 attendanceRouter.get("/summary", ...employerOnly, summaryHandler);
 
 attendanceRouter.get("/reports/monthly", ...employerOnly, monthlyReportHandler);
+attendanceRouter.get("/reports/monthly/export", ...employerOnly, monthlyReportExportHandler);
 attendanceRouter.get("/reports/employee/:employeeId", ...employerOnly, employeeReportHandler);
 attendanceRouter.get("/trend", ...employerOnly, trendHandler);
+attendanceRouter.get("/export", ...employerOnly, attendanceExportHandler);

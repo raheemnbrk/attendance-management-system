@@ -16,6 +16,26 @@ export function todayISO(): string {
   return dateFormatter.format(new Date());
 }
 
+// Date + time formatter used by file exports: "YYYY-MM-DD HH:mm" in the
+// configured timezone (h23 to avoid a "24:xx" hour at midnight).
+const dateTimeFormatter = new Intl.DateTimeFormat("en-CA", {
+  timeZone: env.TZ,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
+
+// "YYYY-MM-DD HH:mm" representation of an instant in the configured timezone.
+export function formatDateTimeTz(date: Date): string {
+  const parts = dateTimeFormatter.formatToParts(date);
+  const get = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((part) => part.type === type)?.value ?? "";
+  return `${get("year")}-${get("month")}-${get("day")} ${get("hour")}:${get("minute")}`;
+}
+
 // Canonical representation of a calendar day for @db.Date columns: a Date
 // instance at UTC midnight of that day (a @db.Date column carries no time).
 export function isoToUtcMidnight(isoDate: string): Date {

@@ -81,6 +81,25 @@ export const trendQuerySchema = z.object({
     .default(7),
 });
 
+export const exportFormatSchema = z.enum(["csv", "xlsx"]);
+
+export const attendanceExportQuerySchema = z
+  .object({
+    format: exportFormatSchema.default("csv"),
+    from: isoDateSchema.optional(),
+    to: isoDateSchema.optional(),
+    employeeId: z.string().trim().min(1, "Employee id must not be empty").optional(),
+  })
+  .refine((data) => !data.from || !data.to || data.from <= data.to, {
+    message: "from must be before or equal to to",
+    path: ["from"],
+  });
+
+export const monthlyReportExportQuerySchema = z.object({
+  format: exportFormatSchema.default("csv"),
+  month: monthSchema,
+});
+
 export type CheckInInput = z.infer<typeof checkInSchema>;
 export type HistoryQuery = z.infer<typeof historyQuerySchema>;
 export type EmployeeListQuery = z.infer<typeof employeeListQuerySchema>;
@@ -89,3 +108,6 @@ export type SummaryQuery = z.infer<typeof summaryQuerySchema>;
 export type MonthlyReportQuery = z.infer<typeof monthlyReportQuerySchema>;
 export type EmployeeReportQuery = z.infer<typeof employeeReportQuerySchema>;
 export type TrendQuery = z.infer<typeof trendQuerySchema>;
+export type AttendanceExportQuery = z.infer<typeof attendanceExportQuerySchema>;
+export type MonthlyReportExportQuery = z.infer<typeof monthlyReportExportQuerySchema>;
+export type ExportFormat = z.infer<typeof exportFormatSchema>;
