@@ -47,17 +47,25 @@ export function Button({
   children,
   ...props
 }: ButtonProps) {
-  const Comp = asChild ? Slot : "button";
+  // Radix Slot (asChild) requires exactly one element child, so the loading
+  // spinner branch is only rendered for native buttons.
+  if (asChild) {
+    return (
+      <Slot className={cn(buttonVariants({ variant, size }), className)} {...props}>
+        {children}
+      </Slot>
+    );
+  }
 
   return (
-    <Comp
+    <button
       className={cn(buttonVariants({ variant, size }), className)}
       disabled={disabled || isLoading}
       {...props}
     >
-      {!asChild && isLoading ? <Loader2 className="animate-spin" aria-hidden="true" /> : null}
+      {isLoading ? <Loader2 className="animate-spin" aria-hidden="true" /> : null}
       {children}
-    </Comp>
+    </button>
   );
 }
 

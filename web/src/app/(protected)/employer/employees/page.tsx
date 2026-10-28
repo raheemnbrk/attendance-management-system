@@ -114,24 +114,39 @@ export default function EmployeesPage() {
   const [confirmTarget, setConfirmTarget] = useState<Employee | null>(null);
 
   // Open the "Add employee" dialog when the dashboard quick action links here
-  // with ?new=1. Read directly from location to avoid suspending the page.
+  // with ?new=1. Read from location during the first client render — this page
+  // only mounts client-side after auth resolves, so there is no SSR mismatch.
+  const [newParamHandled, setNewParamHandled] = useState(false);
+  if (!newParamHandled) {
+    setNewParamHandled(true);
+    if (
+      typeof window !== "undefined" &&
+      new URLSearchParams(window.location.search).get("new") === "1"
+    ) {
+      setAddOpen(true);
+    }
+  }
+
+  // Strip ?new=1 from the URL once the dialog has been opened.
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get("new") === "1") {
-      setAddOpen(true);
-      router.replace("/employer/employees");
+      router.replace("/employer/employees", { scroll: false });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [router]);
 
-  // Debounce the search box and reset pagination when filters change.
+  // Debounce the search box.
   useEffect(() => {
     const timer = setTimeout(() => setSearch(searchInput), 300);
     return () => clearTimeout(timer);
   }, [searchInput]);
 
-  useEffect(() => {
+  // Reset pagination when filters change (state adjusted during render).
+  const [filterKey, setFilterKey] = useState<string | null>(null);
+  const nextFilterKey = `${search}|${statusFilter}`;
+  if (filterKey !== nextFilterKey) {
+    setFilterKey(nextFilterKey);
     setPage(1);
-  }, [search, statusFilter]);
+  }
 
   const { data: employees, isPending } = useEmployees({
     search: search || undefined,

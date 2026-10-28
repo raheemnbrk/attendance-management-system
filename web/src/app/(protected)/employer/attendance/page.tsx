@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { CalendarDays, MapPin } from "lucide-react";
-import { ApiError } from "@/shared/types/api";
 import { getAttendanceStatus } from "@/features/attendance/attendance.types";
 import type { EmployeeAttendanceRecord } from "@/features/attendance/attendance.types";
 import { useEmployerAttendance } from "@/features/attendance/use-attendance";

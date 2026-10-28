@@ -5,7 +5,6 @@ import { useMemo, useState } from "react";
 import { format } from "date-fns";
 import {
   BarChart3,
-  CheckCircle2,
   LogOut,
   Plus,
   UserCheck,

@@ -76,7 +76,7 @@ export default function EmployeeDetailPage({ params }: { params: Promise<{ id: s
     to: today,
   }));
 
-  const { data: employee, isPending: employeePending, isError: employeeError } = useEmployee(id);
+  const { data: employee, isError: employeeError } = useEmployee(id);
   const { data: report, isPending: reportPending } = useEmployeeReport(id, range.from, range.to);
 
   const updateEmployee = useUpdateEmployee();
