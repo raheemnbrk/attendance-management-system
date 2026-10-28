@@ -40,7 +40,7 @@ export function LoginForm() {
 
     setFieldErrors({});
     login.mutate(result.data, {
-      onSuccess: () => router.replace("/dashboard"),
+      onSuccess: () => router.replace("/employer/dashboard"),
     });
   }
 
