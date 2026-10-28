@@ -121,6 +121,17 @@
   }
 }
 
+@keyframes office-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
 /* Print: app chrome marked with data-print-hide (sidebar, header) is removed
    and everything is forced onto a light, readable sheet regardless of theme. */
 @media print {

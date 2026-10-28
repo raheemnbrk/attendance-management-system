@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
+import { LoadingScreen } from "@/shared/components/loading-screen";
 import { useAuthStore } from "./auth.store";
 
 // Employer-only routes: bounces unauthenticated visitors back to /login and
@@ -18,11 +19,7 @@ export function EmployerRoute({ children }: { children: ReactNode }) {
   }, [status, router]);
 
   if (status !== "authenticated") {
-    return (
-      <div className="flex flex-1 items-center justify-center p-16 text-sm text-muted-foreground">
-        Loading session...
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   if (!user || user.role !== "EMPLOYER") {
