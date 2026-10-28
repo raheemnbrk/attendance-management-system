@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   getAttendanceSummary,
   getEmployeeReport,
+  getMonthlyReport,
   getTrend,
   listEmployerAttendance,
 } from "./attendance.service";
@@ -38,5 +39,12 @@ export function useEmployeeReport(employeeId: string, from?: string, to?: string
     queryKey: ["attendance", "employee-report", employeeId, from ?? null, to ?? null],
     queryFn: () => getEmployeeReport(employeeId, from, to),
     enabled: employeeId.length > 0,
+  });
+}
+
+export function useMonthlyReport(month: string) {
+  return useQuery({
+    queryKey: ["attendance", "monthly-report", month],
+    queryFn: () => getMonthlyReport(month),
   });
 }

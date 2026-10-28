@@ -3,6 +3,7 @@ import type {
   AttendanceSummary,
   EmployeeAttendanceRecord,
   EmployeeReport,
+  MonthlyReportRow,
   Paginated,
   TrendDay,
 } from "./attendance.types";
@@ -57,5 +58,13 @@ export async function getEmployeeReport(
       ...(from ? { from } : {}),
       ...(to ? { to } : {}),
     },
+  });
+}
+
+export async function getMonthlyReport(month: string): Promise<MonthlyReportRow[]> {
+  return apiRequest<MonthlyReportRow[]>({
+    method: "GET",
+    url: "/attendance/reports/monthly",
+    params: { month },
   });
 }
