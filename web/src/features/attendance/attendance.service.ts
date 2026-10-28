@@ -2,6 +2,7 @@ import { apiRequest } from "@/shared/lib/api";
 import type {
   AttendanceSummary,
   EmployeeAttendanceRecord,
+  EmployeeReport,
   Paginated,
   TrendDay,
 } from "./attendance.types";
@@ -40,6 +41,21 @@ export async function listEmployerAttendance(
       ...(query.from ? { from: query.from } : {}),
       ...(query.to ? { to: query.to } : {}),
       ...(query.employeeId ? { employeeId: query.employeeId } : {}),
+    },
+  });
+}
+
+export async function getEmployeeReport(
+  employeeId: string,
+  from?: string,
+  to?: string,
+): Promise<EmployeeReport> {
+  return apiRequest<EmployeeReport>({
+    method: "GET",
+    url: `/attendance/reports/employee/${employeeId}`,
+    params: {
+      ...(from ? { from } : {}),
+      ...(to ? { to } : {}),
     },
   });
 }
