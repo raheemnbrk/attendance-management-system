@@ -3,6 +3,7 @@ import type { ParamsDictionary } from "express-serve-static-core";
 import { asyncHandler } from "../../shared/utils/async-handler";
 import {
   approveEmployer,
+  changePassword,
   createEmployee,
   getCurrentUser,
   getEmployee,
@@ -16,9 +17,11 @@ import {
   resetEmployeePassword,
   setEmployeeActive,
   updateEmployee,
+  updateProfile,
 } from "./user.service";
 import { employerStatusQuerySchema, listEmployeesQuerySchema } from "./user.schema";
 import type {
+  ChangePasswordInput,
   CreateEmployeeInput,
   LoginInput,
   LogoutInput,
@@ -27,6 +30,7 @@ import type {
   RejectEmployerInput,
   ResetEmployeePasswordInput,
   UpdateEmployeeInput,
+  UpdateProfileInput,
 } from "./user.schema";
 
 export const loginHandler = asyncHandler(
@@ -82,6 +86,20 @@ export const meHandler = asyncHandler(async (req: Request, res: Response) => {
   const result = getCurrentUser(req.user!);
   res.status(200).json({ success: true, data: result });
 });
+
+export const updateProfileHandler = asyncHandler(
+  async (req: Request<unknown, unknown, UpdateProfileInput>, res: Response) => {
+    const result = await updateProfile(req.user!, req.body);
+    res.status(200).json({ success: true, data: result });
+  },
+);
+
+export const changePasswordHandler = asyncHandler(
+  async (req: Request<unknown, unknown, ChangePasswordInput>, res: Response) => {
+    const result = await changePassword(req.user!, req.body);
+    res.status(200).json({ success: true, data: result });
+  },
+);
 
 export const createEmployeeHandler = asyncHandler(
   async (req: Request<unknown, unknown, CreateEmployeeInput>, res: Response) => {

@@ -15,6 +15,7 @@ import {
   hashPassword,
 } from "../../shared/utils/password";
 import type {
+  ChangePasswordInput,
   CreateEmployeeInput,
   EmployerStatusQuery,
   ListEmployeesQuery,
@@ -25,6 +26,7 @@ import type {
   RejectEmployerInput,
   ResetEmployeePasswordInput,
   UpdateEmployeeInput,
+  UpdateProfileInput,
 } from "./user.schema";
 
 export type PublicUser = Omit<User, "passwordHash">;
@@ -224,6 +226,45 @@ export async function rejectEmployer(id: string, input: RejectEmployerInput): Pr
 
 export function getCurrentUser(user: AuthUser): AuthUser {
   return user;
+}
+
+export async function updateProfile(user: AuthUser, input: UpdateProfileInput): Promise<PublicUser> {
+  const updated = await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      name: input.name,
+      company: input.company,
+    },
+  });
+
+  return toPublicUser(updated);
+}
+
+export async function changePassword(user: AuthUser, input: ChangePasswordInput): Promise<{ id: string }> {
+  const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
+
+  if (!dbUser) {
+    throw new AppError(401, "Account not found");
+  }
+
+  const currentPasswordMatches = await comparePassword(input.currentPassword, dbUser.passwordHash);
+
+  if (!currentPasswordMatches) {
+    throw new AppError(400, "Current password is incorrect");
+  }
+
+  const passwordHash = await hashPassword(input.newPassword);
+
+  await prisma.$transaction(async (tx) => {
+    await tx.user.update({ where: { id: dbUser.id }, data: { passwordHash } });
+    // All sessions are revoked so the user must sign in again everywhere.
+    await tx.refreshToken.updateMany({
+      where: { userId: dbUser.id, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+  });
+
+  return { id: dbUser.id };
 }
 
 export async function createEmployee(employerId: string, input: CreateEmployeeInput) {

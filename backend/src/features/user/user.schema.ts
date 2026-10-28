@@ -51,6 +51,24 @@ export const resetEmployeePasswordSchema = z.object({
   password: z.string().min(8, "Password must be at least 8 characters").optional(),
 });
 
+export const updateProfileSchema = z
+  .object({
+    name: z.string().trim().min(1, "Name is required").max(100, "Name must be at most 100 characters").optional(),
+    company: z.string().trim().min(1, "Company must not be empty").max(100, "Company must be at most 100 characters").optional(),
+  })
+  .refine((data) => data.name !== undefined || data.company !== undefined, {
+    message: "At least one field is required",
+  });
+
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1, "Current password is required"),
+    newPassword: z.string().min(8, "New password must be at least 8 characters"),
+  })
+  .refine((data) => data.currentPassword !== data.newPassword, {
+    message: "New password must be different from the current password",
+  });
+
 const refreshTokenSchema = z.object({
   refreshToken: z.string().min(1, "Refresh token is required"),
 });
@@ -66,5 +84,7 @@ export type CreateEmployeeInput = z.infer<typeof createEmployeeSchema>;
 export type ListEmployeesQuery = z.infer<typeof listEmployeesQuerySchema>;
 export type UpdateEmployeeInput = z.infer<typeof updateEmployeeSchema>;
 export type ResetEmployeePasswordInput = z.infer<typeof resetEmployeePasswordSchema>;
+export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
 export type RefreshInput = z.infer<typeof refreshSchema>;
 export type LogoutInput = z.infer<typeof logoutSchema>;

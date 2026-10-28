@@ -5,6 +5,7 @@ import { authLimiter, employerWriteLimiter, registerLimiter } from "../../shared
 import {
   activateEmployeeHandler,
   approveEmployerHandler,
+  changePasswordHandler,
   createEmployeeHandler,
   deactivateEmployeeHandler,
   getEmployeeHandler,
@@ -18,8 +19,10 @@ import {
   rejectEmployerHandler,
   resetEmployeePasswordHandler,
   updateEmployeeHandler,
+  updateProfileHandler,
 } from "./user.controller";
 import {
+  changePasswordSchema,
   createEmployeeSchema,
   loginSchema,
   logoutSchema,
@@ -28,6 +31,7 @@ import {
   rejectEmployerSchema,
   resetEmployeePasswordSchema,
   updateEmployeeSchema,
+  updateProfileSchema,
 } from "./user.schema";
 
 export const userRouter = Router();
@@ -41,6 +45,8 @@ const adminOnly = [authenticate, requireRole("ADMIN")] as const;
 const employerOnly = [authenticate, requireRole("EMPLOYER"), requireApproved] as const;
 
 userRouter.get("/me", authenticate, meHandler);
+userRouter.patch("/me", authenticate, employerWriteLimiter, validate(updateProfileSchema), updateProfileHandler);
+userRouter.patch("/me/password", authenticate, employerWriteLimiter, validate(changePasswordSchema), changePasswordHandler);
 
 userRouter.get("/employers", ...adminOnly, listEmployersHandler);
 userRouter.patch("/employers/:id/approve", ...adminOnly, approveEmployerHandler);
