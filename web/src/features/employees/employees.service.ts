@@ -8,6 +8,22 @@ export type ListEmployeesQuery = {
   isActive?: boolean;
 };
 
+export type CreateEmployeeInput = {
+  name: string;
+  email: string;
+  department?: string;
+};
+
+export type CreateEmployeeResponse = {
+  employee: Employee;
+  temporaryPassword?: string;
+};
+
+export type UpdateEmployeeInput = {
+  name?: string;
+  department?: string;
+};
+
 export async function listEmployees(query: ListEmployeesQuery = {}): Promise<Employee[]> {
   return apiRequest<Employee[]>({
     method: "GET",
@@ -21,4 +37,44 @@ export async function listEmployees(query: ListEmployeesQuery = {}): Promise<Emp
 
 export async function getEmployee(id: string): Promise<Employee> {
   return apiRequest<Employee>({ method: "GET", url: `/users/employees/${id}` });
+}
+
+export async function createEmployee(input: CreateEmployeeInput): Promise<CreateEmployeeResponse> {
+  return apiRequest<CreateEmployeeResponse>({
+    method: "POST",
+    url: "/users/employees",
+    data: {
+      ...input,
+      ...(input.department ? { department: input.department } : {}),
+    },
+  });
+}
+
+export async function updateEmployee(
+  id: string,
+  input: UpdateEmployeeInput,
+): Promise<Employee> {
+  return apiRequest<Employee>({
+    method: "PATCH",
+    url: `/users/employees/${id}`,
+    data: input,
+  });
+}
+
+export async function resetEmployeePassword(
+  id: string,
+): Promise<{ temporaryPassword?: string }> {
+  return apiRequest<{ temporaryPassword?: string }>({
+    method: "PATCH",
+    url: `/users/employees/${id}/reset-password`,
+    data: {},
+  });
+}
+
+export async function setEmployeeActive(id: string, isActive: boolean): Promise<Employee> {
+  return apiRequest<Employee>({
+    method: "PATCH",
+    url: `/users/employees/${id}/${isActive ? "activate" : "deactivate"}`,
+    data: {},
+  });
 }
