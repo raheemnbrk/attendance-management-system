@@ -120,3 +120,41 @@
     @apply bg-background text-foreground font-sans antialiased;
   }
 }
+
+/* Print: app chrome marked with data-print-hide (sidebar, header) is removed
+   and everything is forced onto a light, readable sheet regardless of theme. */
+@media print {
+  [data-print-hide] {
+    display: none !important;
+  }
+
+  html,
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  main {
+    max-width: none !important;
+    padding: 0 !important;
+  }
+
+  * {
+    box-shadow: none !important;
+  }
+
+  table,
+  thead,
+  tbody,
+  tr,
+  th,
+  td {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  th,
+  td {
+    border-bottom: 1px solid #d4d4d8 !important;
+  }
+}
