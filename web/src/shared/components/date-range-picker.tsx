@@ -1,24 +1,47 @@
 "use client";
 
-import { addDays, format, subDays } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { CalendarRange } from "lucide-react";
+import { useState } from "react";
+import type { DateRange as RdpDateRange } from "react-day-picker";
 import { todayLocalISO } from "@/shared/lib/format";
-import { Input } from "@/shared/ui/input";
-import { Label } from "@/shared/ui/label";
+import { Button } from "@/shared/ui/button";
+import { Calendar } from "@/shared/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
 
 export type DateRange = { from?: string; to?: string };
 
-// Range presets keep common queries one click away.
-const PRESETS: Array<{ label: string; range: () => DateRange }> = [
-  { label: "Last 7 days", range: () => ({ from: format(subDays(new Date(), 6), "yyyy-MM-dd"), to: todayLocalISO() }) },
-  { label: "Last 30 days", range: () => ({ from: format(subDays(new Date(), 29), "yyyy-MM-dd"), to: todayLocalISO() }) },
-  { label: "This month", range: () => ({ from: format(new Date(), "yyyy-MM-01"), to: todayLocalISO() }) },
-];
-
-function shiftDate(days: number): string {
-  return format(addDays(new Date(), days), "yyyy-MM-dd");
+function toIso(date: Date | undefined): string | undefined {
+  return date ? format(date, "yyyy-MM-dd") : undefined;
 }
 
+function fromDate(iso: string | undefined): Date | undefined {
+  return iso ? parseISO(`${iso}T00:00:00`) : undefined;
+}
+
+const PRESETS: Array<{ label: string; range: () => DateRange }> = [
+  {
+    label: "Last 7 days",
+    range: () => ({
+      from: format(new Date(Date.now() - 6 * 86_400_000), "yyyy-MM-dd"),
+      to: todayLocalISO(),
+    }),
+  },
+  {
+    label: "Last 30 days",
+    range: () => ({
+      from: format(new Date(Date.now() - 29 * 86_400_000), "yyyy-MM-dd"),
+      to: todayLocalISO(),
+    }),
+  },
+  {
+    label: "This month",
+    range: () => ({ from: format(new Date(), "yyyy-MM-01"), to: todayLocalISO() }),
+  },
+];
+
+// Shadcn popover + calendar range picker. `value` holds ISO dates
+// (yyyy-MM-dd); no end date means an open-ended "from" filter.
 export function DateRangePicker({
   value,
   onChange,
@@ -28,64 +51,76 @@ export function DateRangePicker({
   onChange: (range: DateRange) => void;
   className?: string;
 }) {
-  const today = todayLocalISO();
-  const { from, to } = value;
+  const [open, setOpen] = useState(false);
+
+  const from = fromDate(value.from);
+  const to = fromDate(value.to);
+
+  const label =
+    from && to
+      ? `${format(from, "MMM d")} – ${format(to, "MMM d")}`
+      : from
+        ? `${format(from, "MMM d")} – …`
+        : "All dates";
+
+  // No future attendance exists; keep the calendar bounded to this month.
+  const endMonth = (() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  })();
+
+  function handleSelect(range: RdpDateRange | undefined) {
+    onChange({ from: toIso(range?.from), to: toIso(range?.to) });
+    if (range?.from && range?.to) {
+      setOpen(false);
+    }
+  }
 
   return (
     <div className={className}>
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="flex flex-col gap-1">
-          <Label htmlFor="range-from" className="text-xs text-muted-foreground">
-            From
-          </Label>
-          <Input
-            id="range-from"
-            type="date"
-            max={today}
-            value={from ?? ""}
-            onChange={(event) => onChange({ ...value, from: event.target.value || undefined })}
-            className="w-40"
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button variant="outline" className="justify-start font-normal" title="Filter by date range">
+            <CalendarRange aria-hidden="true" />
+            {label}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent align="start" className="w-auto p-0">
+          <Calendar
+            mode="range"
+            selected={{ from, to }}
+            defaultMonth={from ?? new Date()}
+            endMonth={endMonth}
+            numberOfMonths={2}
+            onSelect={handleSelect}
           />
-        </div>
-        <CalendarRange className="mt-5 size-4 text-muted-foreground" aria-hidden="true" />
-        <div className="flex flex-col gap-1">
-          <Label htmlFor="range-to" className="text-xs text-muted-foreground">
-            To
-          </Label>
-          <Input
-            id="range-to"
-            type="date"
-            max={today}
-            value={to ?? ""}
-            onChange={(event) =>
-              onChange({
-                from: value.from,
-                to: event.target.value || undefined,
-              })
-            }
-            className="w-40"
-          />
-        </div>
-      </div>
-      <div className="mt-2 flex flex-wrap gap-1.5">
-        {PRESETS.map((preset) => (
-          <button
-            key={preset.label}
-            type="button"
-            onClick={() => onChange(preset.range())}
-            className="rounded-full border border-border px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-          >
-            {preset.label}
-          </button>
-        ))}
-        <button
-          type="button"
-          onClick={() => onChange({ from: shiftDate(-29), to: today })}
-          className="rounded-full border border-border px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-        >
-          Reset
-        </button>
-      </div>
+          <div className="flex flex-wrap gap-1.5 border-t border-border p-2">
+            {PRESETS.map((preset) => (
+              <button
+                key={preset.label}
+                type="button"
+                onClick={() => {
+                  onChange(preset.range());
+                  setOpen(false);
+                }}
+                className="rounded-full border border-border px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+              >
+                {preset.label}
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => {
+                onChange({});
+                setOpen(false);
+              }}
+              className="rounded-full border border-border px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+            >
+              Reset
+            </button>
+          </div>
+        </PopoverContent>
+      </Popover>
     </div>
   );
 }

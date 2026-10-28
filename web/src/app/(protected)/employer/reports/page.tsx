@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { ArrowDown, ArrowUp, ArrowUpDown, CalendarRange, Printer } from "lucide-react";
+import { format, parseISO } from "date-fns";
 import { todayLocalISO } from "@/shared/lib/format";
 import { formatDuration, formatMonth } from "@/shared/lib/format";
 import type { MonthlyReportRow } from "@/features/attendance/attendance.types";
@@ -9,8 +10,8 @@ import { useMonthlyReport } from "@/features/attendance/use-attendance";
 import { EmptyState } from "@/shared/components/empty-state";
 import { ExportMenu } from "@/shared/components/export-menu";
 import { Button } from "@/shared/ui/button";
-import { Input } from "@/shared/ui/input";
-import { Label } from "@/shared/ui/label";
+import { Calendar } from "@/shared/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
 import { Skeleton } from "@/shared/ui/skeleton";
 import {
   Table,
@@ -75,6 +76,44 @@ function SortHeader({
   );
 }
 
+// Month selector built on the shadcn calendar: pick any day of a month and
+// the month (yyyy-MM) is derived, with dropdown navigation for quick jumps.
+function MonthPicker({
+  month,
+  onChange,
+}: {
+  month: string;
+  onChange: (month: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const selected = parseISO(`${month}-01T00:00:00`);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" className="justify-start font-normal" title="Select month">
+          <CalendarRange aria-hidden="true" />
+          {formatMonth(month)}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-auto p-0">
+        <Calendar
+          mode="single"
+          captionLayout="dropdown"
+          selected={selected}
+          defaultMonth={selected}
+          onSelect={(date) => {
+            if (date) {
+              onChange(format(date, "yyyy-MM"));
+              setOpen(false);
+            }
+          }}
+        />
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 export default function ReportsPage() {
   const [month, setMonth] = useState(() => todayLocalISO().slice(0, 7));
   const [sortKey, setSortKey] = useState<SortKey>("totalMinutes");
@@ -131,16 +170,8 @@ export default function ReportsPage() {
       </div>
 
       <div className="flex flex-col gap-1">
-        <Label htmlFor="report-month" className="text-xs text-muted-foreground">
-          Month
-        </Label>
-        <Input
-          id="report-month"
-          type="month"
-          value={month}
-          onChange={(event) => event.target.value && setMonth(event.target.value)}
-          className="w-48"
-        />
+        <span className="text-xs text-muted-foreground">Month</span>
+        <MonthPicker month={month} onChange={setMonth} />
       </div>
 
       <h2 className="text-lg font-semibold">{formatMonth(month)}</h2>
