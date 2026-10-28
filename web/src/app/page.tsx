@@ -12,8 +12,8 @@ export default function Home() {
           Sign in
         </Link>
         <Link
-          href="/dashboard"
-          className="rounded-md border border-black/8 px-5 py-2.5 transition-colors hover:bg-black04 dark:border-white/[.145] dark:hover:bg-white/6"
+          href="/employer/dashboard"
+          className="rounded-md border border-border px-5 py-2.5 transition-colors hover:bg-accent hover:text-accent-foreground"
         >
           Dashboard
         </Link>
