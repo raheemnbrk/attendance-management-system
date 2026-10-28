@@ -52,7 +52,7 @@ function clearPersistedRefreshToken(): void {
 
 // The access token lives in memory only; the single-use refresh token is the
 // only persisted piece, so a reload can silently restore the session.
-export async function bootstrapAuth(): Promise<void> {
+async function runBootstrap(): Promise<void> {
   const refreshToken = getStoredRefreshToken();
 
   if (!refreshToken) {
@@ -68,6 +68,22 @@ export async function bootstrapAuth(): Promise<void> {
   } catch {
     useAuthStore.getState().clearSession();
   }
+}
+
+let bootstrapPromise: Promise<void> | null = null;
+
+// Concurrent mounts (e.g. React StrictMode double-running effects) must share
+// a single refresh call: refresh tokens are single-use and the backend
+// revokes the whole family when a revoked token is reused, so a duplicate
+// call would sign the user out.
+export function bootstrapAuth(): Promise<void> {
+  if (!bootstrapPromise) {
+    bootstrapPromise = runBootstrap().finally(() => {
+      bootstrapPromise = null;
+    });
+  }
+
+  return bootstrapPromise;
 }
 
 configureApi({
