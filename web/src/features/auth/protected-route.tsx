@@ -16,7 +16,7 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
 
   if (status !== "authenticated") {
     return (
-      <div className="flex flex-1 items-center justify-center p-16 text-sm text-zinc-500 dark:text-zinc-400">
+      <div className="flex flex-1 items-center justify-center p-16 text-sm text-muted-foreground">
         Loading session...
       </div>
     );
