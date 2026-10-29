@@ -40,9 +40,30 @@ export const historyQuerySchema = z
     path: ["from"],
   });
 
+// Sentinel the frontend sends when the "Unassigned" department filter option
+// is picked: it must survive the "non-empty string" validation so it can be
+// translated into a "department is NULL or empty" database filter.
+export const UNASSIGNED_DEPARTMENT = "__none__";
+
+const departmentFilterSchema = z
+  .string()
+  .trim()
+  .min(1, "Department must not be empty")
+  .max(100, "Department must be at most 100 characters")
+  .optional();
+
+const searchFilterSchema = z
+  .string()
+  .trim()
+  .min(1, "Search must not be empty")
+  .max(100, "Search must be at most 100 characters")
+  .optional();
+
 export const employeeListQuerySchema = historyQuerySchema.extend({
   date: isoDateSchema.optional(),
   employeeId: z.string().trim().min(1, "Employee id must not be empty").optional(),
+  department: departmentFilterSchema,
+  search: searchFilterSchema,
 });
 
 export const summaryQuerySchema = z.object({
@@ -89,6 +110,8 @@ export const attendanceExportQuerySchema = z
     from: isoDateSchema.optional(),
     to: isoDateSchema.optional(),
     employeeId: z.string().trim().min(1, "Employee id must not be empty").optional(),
+    department: departmentFilterSchema,
+    search: searchFilterSchema,
   })
   .refine((data) => !data.from || !data.to || data.from <= data.to, {
     message: "from must be before or equal to to",

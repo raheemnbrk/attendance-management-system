@@ -5,8 +5,15 @@ import {
   approveEmployer,
   changePassword,
   createEmployee,
+  getAdminActivity,
+  getAdminStats,
+  getAdminTrends,
+  getEmployerDetails,
   getCurrentUser,
   getEmployee,
+  listAllUsers,
+  listEmployerEmployees,
+  listEmployerDepartments,
   listEmployers,
   listEmployees,
   login,
@@ -16,10 +23,18 @@ import {
   rejectEmployer,
   resetEmployeePassword,
   setEmployeeActive,
+  setEmployerSuspended,
   updateEmployee,
   updateProfile,
 } from "./user.service";
-import { employerStatusQuerySchema, listEmployeesQuerySchema } from "./user.schema";
+import {
+  activityQuerySchema,
+  employerEmployeesQuerySchema,
+  employerStatusQuerySchema,
+  listEmployeesQuerySchema,
+  trendsQuerySchema,
+  userListQuerySchema,
+} from "./user.schema";
 import type {
   ChangePasswordInput,
   CreateEmployeeInput,
@@ -63,6 +78,54 @@ export const registerEmployerHandler = asyncHandler(
     });
   },
 );
+
+export const statsHandler = asyncHandler(async (_req: Request, res: Response) => {
+  const result = await getAdminStats();
+  res.status(200).json({ success: true, data: result });
+});
+
+export const trendsHandler = asyncHandler(async (req: Request, res: Response) => {
+  const query = trendsQuerySchema.parse(req.query);
+  const result = await getAdminTrends(query.days);
+  res.status(200).json({ success: true, data: result });
+});
+
+export const activityHandler = asyncHandler(async (req: Request, res: Response) => {
+  const query = activityQuerySchema.parse(req.query);
+  const result = await getAdminActivity(query.limit);
+  res.status(200).json({ success: true, data: result });
+});
+
+export const getEmployerHandler = asyncHandler(async (req: Request<{ id: string }>, res: Response) => {
+  const result = await getEmployerDetails(req.params.id);
+  res.status(200).json({ success: true, data: result });
+});
+
+export const listEmployerEmployeesHandler = asyncHandler(
+  async (req: Request<{ id: string }>, res: Response) => {
+    const query = employerEmployeesQuerySchema.parse(req.query);
+    const result = await listEmployerEmployees(req.params.id, query);
+    res.status(200).json({ success: true, data: result });
+  },
+);
+
+export const suspendEmployerHandler = asyncHandler(async (req: Request<{ id: string }>, res: Response) => {
+  const result = await setEmployerSuspended(req.params.id, false);
+  res.status(200).json({ success: true, data: result });
+});
+
+export const reactivateEmployerHandler = asyncHandler(
+  async (req: Request<{ id: string }>, res: Response) => {
+    const result = await setEmployerSuspended(req.params.id, true);
+    res.status(200).json({ success: true, data: result });
+  },
+);
+
+export const usersListHandler = asyncHandler(async (req: Request, res: Response) => {
+  const query = userListQuerySchema.parse(req.query);
+  const result = await listAllUsers(query);
+  res.status(200).json({ success: true, data: result });
+});
 
 export const listEmployersHandler = asyncHandler(async (req: Request, res: Response) => {
   const query = employerStatusQuerySchema.parse(req.query);
@@ -111,6 +174,11 @@ export const createEmployeeHandler = asyncHandler(
 export const listEmployeesHandler = asyncHandler(async (req: Request, res: Response) => {
   const query = listEmployeesQuerySchema.parse(req.query);
   const result = await listEmployees(req.user!.id, query);
+  res.status(200).json({ success: true, data: result });
+});
+
+export const departmentsHandler = asyncHandler(async (req: Request, res: Response) => {
+  const result = await listEmployerDepartments(req.user!.id);
   res.status(200).json({ success: true, data: result });
 });
 

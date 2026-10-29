@@ -15,6 +15,7 @@ import type {
   HistoryQuery,
   SummaryQuery,
 } from "./attendance.schema";
+import { UNASSIGNED_DEPARTMENT } from "./attendance.schema";
 
 type AttendanceGetPayload = Prisma.AttendanceGetPayload<object>;
 
@@ -183,16 +184,61 @@ export async function findOwnedEmployeeOrThrow(employerId: string, employeeId: s
   return employee;
 }
 
+// Shared user-level filter for the employer's attendance list and export:
+// department (`__none__` = no department set) and search by name or email.
+// The side conditions are combined with AND so both filters can apply at once.
+type UserFilterInput = {
+  employeeId?: string;
+  department?: string;
+  search?: string;
+};
+
+export function buildEmployerUserFilter(
+  employerId: string,
+  query: UserFilterInput,
+): Prisma.UserWhereInput {
+  const conditions: Prisma.UserWhereInput[] = [];
+
+  if (query.department) {
+    conditions.push(
+      query.department === UNASSIGNED_DEPARTMENT
+        ? { OR: [{ department: null }, { department: "" }] }
+        : { department: query.department },
+    );
+  }
+
+  if (query.search) {
+    conditions.push({
+      OR: [
+        { name: { contains: query.search, mode: "insensitive" } },
+        { email: { contains: query.search, mode: "insensitive" } },
+      ],
+    });
+  }
+
+  const base: Prisma.UserWhereInput = {
+    employerId,
+    role: "EMPLOYEE" as const,
+    ...(query.employeeId ? { id: query.employeeId } : {}),
+  };
+
+  if (conditions.length === 0) {
+    return base;
+  }
+
+  if (conditions.length === 1) {
+    return { ...base, ...conditions[0] };
+  }
+
+  return { ...base, AND: conditions };
+}
+
 export async function listEmployerAttendance(
   employerId: string,
   query: EmployeeListQuery,
 ): Promise<PaginatedEmployeeAttendance> {
   const where: Prisma.AttendanceWhereInput = {
-    user: {
-      employerId,
-      role: "EMPLOYEE",
-      ...(query.employeeId ? { id: query.employeeId } : {}),
-    },
+    user: buildEmployerUserFilter(employerId, query),
     ...(query.date
       ? { date: isoToUtcMidnight(query.date) }
       : { date: buildDateRangeFilter(query.from, query.to) }),

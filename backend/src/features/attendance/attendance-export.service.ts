@@ -8,7 +8,7 @@ import {
   todayISO,
   utcDateToISO,
 } from "../../shared/utils/date";
-import { findOwnedEmployeeOrThrow, getMonthlyReport } from "./attendance.service";
+import { buildEmployerUserFilter, findOwnedEmployeeOrThrow, getMonthlyReport } from "./attendance.service";
 import type {
   AttendanceExportQuery,
   ExportFormat,
@@ -125,11 +125,7 @@ export async function exportAttendanceRecords(
 
   const records = await prisma.attendance.findMany({
     where: {
-      user: {
-        employerId,
-        role: "EMPLOYEE" as const,
-        ...(query.employeeId ? { id: query.employeeId } : {}),
-      },
+      user: buildEmployerUserFilter(employerId, query),
       date: { gte: isoToUtcMidnight(from), lte: isoToUtcMidnight(to) },
     },
     include: { user: { select: { name: true, department: true } } },
