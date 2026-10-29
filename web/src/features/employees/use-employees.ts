@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createEmployee,
   getEmployee,
+  listEmployerDepartments,
   listEmployees,
   resetEmployeePassword,
   setEmployeeActive,
@@ -19,6 +20,16 @@ export function useEmployees(query: ListEmployeesQuery = {}) {
   return useQuery({
     queryKey: ["employees", query.search ?? null, query.isActive ?? null],
     queryFn: () => listEmployees(query),
+  });
+}
+
+// Distinct departments of the signed-in employer's employees, used by the
+// attendance page filter. Kept under the "employees" prefix so employee
+// create/update mutations automatically refresh it.
+export function useEmployerDepartments() {
+  return useQuery({
+    queryKey: ["employees", "departments"],
+    queryFn: listEmployerDepartments,
   });
 }
 

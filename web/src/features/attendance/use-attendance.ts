@@ -29,6 +29,8 @@ export function useEmployerAttendance(query: ListAttendanceQuery) {
       query.from ?? null,
       query.to ?? null,
       query.employeeId ?? null,
+      query.department ?? null,
+      query.search ?? null,
     ],
     queryFn: () => listEmployerAttendance(query),
   });

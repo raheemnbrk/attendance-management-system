@@ -1,17 +1,22 @@
 "use client";
 
-import { useState } from "react";
-import { CalendarDays, MapPin } from "lucide-react";
+import { CalendarDays, MapPin, Search, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import {
+  UNASSIGNED_DEPARTMENT,
+  type ListAttendanceQuery,
+} from "@/features/attendance/attendance.service";
 import { getAttendanceStatus } from "@/features/attendance/attendance.types";
 import type { EmployeeAttendanceRecord } from "@/features/attendance/attendance.types";
 import { useEmployerAttendance } from "@/features/attendance/use-attendance";
-import { useEmployees } from "@/features/employees/use-employees";
+import { useEmployerDepartments } from "@/features/employees/use-employees";
 import { DateRangePicker, type DateRange } from "@/shared/components/date-range-picker";
 import { EmptyState } from "@/shared/components/empty-state";
 import { ExportMenu } from "@/shared/components/export-menu";
 import { StatusBadge } from "@/shared/components/status-badge";
 import { TablePagination } from "@/shared/components/table-pagination";
 import { formatDate, formatDuration, formatTime, mapLink, todayLocalISO } from "@/shared/lib/format";
+import { Input } from "@/shared/ui/input";
 import {
   Select,
   SelectContent,
@@ -31,33 +36,107 @@ import {
 
 const PAGE_SIZE = 15;
 
+const ALL_DEPARTMENTS = "all";
+
+// Filters live in the URL (?dept=&q=&from=&to=, client-only) so they survive a
+// refresh and can be shared — same replaceState pattern as the admin employers
+// page.
+function syncFiltersToUrl(query: Pick<ListAttendanceQuery, "department" | "search">, range: DateRange) {
+  const params = new URLSearchParams();
+
+  if (query.department && query.department !== ALL_DEPARTMENTS) {
+    params.set("dept", query.department);
+  }
+  if (query.search) {
+    params.set("q", query.search);
+  }
+  if (range.from) {
+    params.set("from", range.from);
+  }
+  if (range.to) {
+    params.set("to", range.to);
+  }
+
+  const search = params.toString();
+  window.history.replaceState(null, "", search ? `/employer/attendance?${search}` : "/employer/attendance");
+}
+
 export default function AttendancePage() {
   const today = todayLocalISO();
 
   const [range, setRange] = useState<DateRange>({});
-  const [employeeId, setEmployeeId] = useState<string>("all");
+  const [department, setDepartment] = useState<string>(ALL_DEPARTMENTS);
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
 
-  const { data: employees } = useEmployees();
+  const { data: departmentsData } = useEmployerDepartments();
+
+  // Restore filters from the URL (matches the admin employers page pattern).
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const dept = params.get("dept");
+    const q = params.get("q");
+
+    if (dept) {
+      setDepartment(dept);
+    }
+    if (q) {
+      setSearchInput(q);
+      setSearch(q);
+    }
+  }, []);
+
+  // Debounce: only query once typing pauses for 300ms.
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setSearch(searchInput);
+      setPage(1);
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [searchInput]);
+
+  const hasFilters = Boolean(range.from || range.to || department !== ALL_DEPARTMENTS || search);
+
+  function writeFilters(nextQuery: Pick<ListAttendanceQuery, "department" | "search">, nextRange: DateRange) {
+    syncFiltersToUrl(nextQuery, nextRange);
+  }
+
+  function handleRangeChange(next: DateRange) {
+    setRange(next);
+    setPage(1);
+    writeFilters(
+      { department, search },
+      next,
+    );
+  }
+
+  function handleDepartmentChange(next: string) {
+    setDepartment(next);
+    setPage(1);
+    writeFilters({ department: next, search }, range);
+  }
+
+  function handleClearFilters() {
+    setRange({});
+    setDepartment(ALL_DEPARTMENTS);
+    setSearchInput("");
+    setSearch("");
+    setPage(1);
+    window.history.replaceState(null, "", "/employer/attendance");
+  }
 
   const query = {
     page,
     limit: PAGE_SIZE,
     from: range.from,
     to: range.to,
-    employeeId: employeeId === "all" ? undefined : employeeId,
+    // The employer filter was replaced by department + search; the employeeId
+    // query param stays supported by the API for the employee detail pages.
+    department: department === ALL_DEPARTMENTS ? undefined : department,
+    search: search || undefined,
   };
   const { data, isPending, isFetching } = useEmployerAttendance(query);
-
-  function handleRangeChange(next: DateRange) {
-    setRange(next);
-    setPage(1);
-  }
-
-  function handleEmployeeChange(next: string) {
-    setEmployeeId(next);
-    setPage(1);
-  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -73,7 +152,8 @@ export default function AttendancePage() {
           params={{
             from: range.from,
             to: range.to,
-            employeeId: employeeId === "all" ? undefined : employeeId,
+            department: department === ALL_DEPARTMENTS ? undefined : department,
+            search: search || undefined,
           }}
         />
       </div>
@@ -82,29 +162,55 @@ export default function AttendancePage() {
       <div className="flex flex-wrap items-end gap-4">
         <DateRangePicker value={range} onChange={handleRangeChange} />
         <div className="flex flex-col gap-1">
-          <span className="text-xs text-muted-foreground">Employee</span>
-          <Select value={employeeId} onValueChange={handleEmployeeChange}>
+          <span className="text-xs text-muted-foreground">Department</span>
+          <Select value={department} onValueChange={handleDepartmentChange}>
             <SelectTrigger className="w-56">
-              <SelectValue placeholder="All employees" />
+              <SelectValue placeholder="All departments" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All employees</SelectItem>
-              {(employees ?? []).map((employee) => (
-                <SelectItem key={employee.id} value={employee.id}>
-                  {employee.name}
+              <SelectItem value={ALL_DEPARTMENTS}>All departments</SelectItem>
+              {(departmentsData?.departments ?? []).map((departmentName) => (
+                <SelectItem key={departmentName} value={departmentName}>
+                  {departmentName}
                 </SelectItem>
               ))}
+              {departmentsData?.unassigned ? (
+                <SelectItem value={UNASSIGNED_DEPARTMENT}>Unassigned</SelectItem>
+              ) : null}
             </SelectContent>
           </Select>
         </div>
-        {range.from || range.to || employeeId !== "all" ? (
+        <div className="flex flex-col gap-1">
+          <span className="text-xs text-muted-foreground">Search</span>
+          <div className="relative w-72">
+            <Search
+              className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden="true"
+            />
+            <Input
+              type="search"
+              value={searchInput}
+              onChange={(event) => setSearchInput(event.target.value)}
+              placeholder="Name or email"
+              className="pl-8 pr-8"
+              aria-label="Search attendance by employee name or email"
+            />
+            {searchInput ? (
+              <button
+                type="button"
+                onClick={() => setSearchInput("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
+                aria-label="Clear search"
+              >
+                <X className="size-4" aria-hidden="true" />
+              </button>
+            ) : null}
+          </div>
+        </div>
+        {hasFilters ? (
           <button
             type="button"
-            onClick={() => {
-              setRange({});
-              setEmployeeId("all");
-              setPage(1);
-            }}
+            onClick={handleClearFilters}
             className="mb-1 text-sm text-muted-foreground underline-offset-4 hover:underline"
           >
             Clear filters
@@ -122,8 +228,23 @@ export default function AttendancePage() {
       ) : !data || data.items.length === 0 ? (
         <EmptyState
           icon={CalendarDays}
-          title="No attendance records"
-          description="No records match the selected filters."
+          title={hasFilters ? "No matching records" : "No attendance records yet"}
+          description={
+            hasFilters
+              ? "No records match the selected department, search or date range."
+              : "Check-ins will appear here as your team uses the app."
+          }
+          action={
+            hasFilters ? (
+              <button
+                type="button"
+                onClick={handleClearFilters}
+                className="text-sm text-muted-foreground underline-offset-4 hover:underline"
+              >
+                Clear filters
+              </button>
+            ) : null
+          }
         />
       ) : (
         <>

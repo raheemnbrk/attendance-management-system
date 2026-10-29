@@ -8,6 +8,8 @@ import type {
   TrendDay,
 } from "./attendance.types";
 
+export const UNASSIGNED_DEPARTMENT = "__none__";
+
 export type ListAttendanceQuery = {
   page?: number;
   limit?: number;
@@ -15,6 +17,8 @@ export type ListAttendanceQuery = {
   from?: string;
   to?: string;
   employeeId?: string;
+  department?: string;
+  search?: string;
 };
 
 export async function getAttendanceSummary(): Promise<AttendanceSummary> {
@@ -42,6 +46,8 @@ export async function listEmployerAttendance(
       ...(query.from ? { from: query.from } : {}),
       ...(query.to ? { to: query.to } : {}),
       ...(query.employeeId ? { employeeId: query.employeeId } : {}),
+      ...(query.department ? { department: query.department } : {}),
+      ...(query.search ? { search: query.search } : {}),
     },
   });
 }

@@ -78,3 +78,12 @@ export async function setEmployeeActive(id: string, isActive: boolean): Promise<
     data: {},
   });
 }
+
+export type EmployerDepartments = {
+  departments: string[];
+  unassigned: boolean;
+};
+
+export async function listEmployerDepartments(): Promise<EmployerDepartments> {
+  return apiRequest<EmployerDepartments>({ method: "GET", url: "/users/departments" });
+}
