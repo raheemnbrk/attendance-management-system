@@ -16,6 +16,11 @@ export function todayISO(): string {
   return dateFormatter.format(new Date());
 }
 
+// YYYY-MM-DD calendar day of any instant, in the configured timezone.
+export function instantToISO(date: Date): string {
+  return dateFormatter.format(date);
+}
+
 // Date + time formatter used by file exports: "YYYY-MM-DD HH:mm" in the
 // configured timezone (h23 to avoid a "24:xx" hour at midnight).
 const dateTimeFormatter = new Intl.DateTimeFormat("en-CA", {

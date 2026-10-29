@@ -15,6 +15,7 @@ const envSchema = z.object({
   RATE_LIMIT_ATTENDANCE_MAX: z.coerce.number().int().positive().default(10),
   RATE_LIMIT_EMPLOYER_WRITE_MAX: z.coerce.number().int().positive().default(30),
   RATE_LIMIT_EXPORT_MAX: z.coerce.number().int().positive().default(5),
+  RATE_LIMIT_ADMIN_MAX: z.coerce.number().int().positive().default(60),
   // Comma-separated weekday numbers, 0 = Sunday ... 6 = Saturday ("5,6" = Friday + Saturday).
   WEEKEND_DAYS: z
     .string()

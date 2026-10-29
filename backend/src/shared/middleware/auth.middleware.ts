@@ -22,6 +22,20 @@ export const authenticate = asyncHandler(async (req: Request, _res: Response, ne
   }
 
   const { passwordHash: _passwordHash, ...authUser } = user;
+
+  // An employee of a suspended employer is blocked too, even when their own
+  // account is active. Independent employees (no employer) pass through.
+  if (user.role === "EMPLOYEE" && user.employerId) {
+    const employer = await prisma.user.findUnique({
+      where: { id: user.employerId },
+      select: { isActive: true },
+    });
+
+    if (employer && !employer.isActive) {
+      throw new AppError(403, "Your employer account is suspended");
+    }
+  }
+
   req.user = authUser;
   next();
 });

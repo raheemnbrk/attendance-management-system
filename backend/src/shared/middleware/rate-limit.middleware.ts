@@ -86,3 +86,10 @@ export const exportLimiter = createUserRateLimiter({
   windowMs: 60 * 1000,
   limit: env.RATE_LIMIT_EXPORT_MAX,
 });
+
+// Apply AFTER `authenticate` on every admin-only users route; generous
+// because the admin dashboard polls stats and lists repeatedly.
+export const adminLimiter = createUserRateLimiter({
+  windowMs: 60 * 1000,
+  limit: env.RATE_LIMIT_ADMIN_MAX,
+});

@@ -21,7 +21,7 @@ export type AdminEmployerDetails = AuthUser & {
 export async function listAdminEmployers(
   query: ListAdminEmployersQuery,
 ): Promise<Paginated<AdminEmployer>> {
-  return apiRequest<Paginated<AdminEmployer>>({
+  const response = await apiRequest<Paginated<AdminEmployer>>({
     method: "GET",
     url: "/users/employers",
     params: {
@@ -31,6 +31,12 @@ export async function listAdminEmployers(
       limit: query.limit,
     },
   });
+
+  if (!Array.isArray(response?.items)) {
+    throw new Error("Invalid employer list response: expected an items array.");
+  }
+
+  return response;
 }
 
 export async function getAdminEmployer(id: string): Promise<AdminEmployerDetails> {
