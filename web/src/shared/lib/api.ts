@@ -85,3 +85,17 @@ export async function apiRequest<T>(config: AxiosRequestConfig): Promise<T> {
   const response = await api.request<ApiEnvelope<T>>(config);
   return response.data.data;
 }
+
+// Human-readable message for any thrown error (network, HTTP, or unknown).
+export function apiErrorMessage(error: unknown): string {
+  if (error instanceof ApiError) {
+    return error.message;
+  }
+  if (axios.isAxiosError(error)) {
+    const data = error.response?.data as ApiErrorEnvelope | undefined;
+    return (data?.message ?? error.message) || "Something went wrong";
+  }
+  return error instanceof Error && error.message
+    ? error.message
+    : "Something went wrong";
+}
