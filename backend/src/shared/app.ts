@@ -6,6 +6,7 @@ import { env } from "./config/env";
 import { errorMiddleware, notFoundMiddleware } from "./middleware/error.middleware";
 import { globalLimiter } from "./middleware/rate-limit.middleware";
 import { userRouter } from "../features/user/user.routes";
+import { adminRouter } from "../features/admin/admin.routes";
 import { attendanceRouter } from "../features/attendance/attendance.routes";
 
 export function createApp() {
@@ -28,6 +29,7 @@ export function createApp() {
 
   app.use("/api", globalLimiter);
   app.use("/api/users", userRouter);
+  app.use("/api/users", adminRouter);
   app.use("/api/attendance", attendanceRouter);
 
   app.use(notFoundMiddleware);
