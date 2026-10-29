@@ -239,7 +239,7 @@ export function AdminEmployersPage() {
                           {employer.email}
                         </TableCell>
                         <TableCell className="hidden text-sm text-muted-foreground lg:table-cell">
-                          {formatDate(employer.createdAt)}
+                          {formatDate(employer.createdAt.slice(0, 10))}
                         </TableCell>
                         <TableCell>
                           <Badge variant={badge.variant}>{badge.label}</Badge>

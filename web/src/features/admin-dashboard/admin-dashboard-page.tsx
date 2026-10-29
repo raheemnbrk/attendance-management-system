@@ -277,7 +277,7 @@ function PendingApprovals() {
                 </p>
               </div>
               <span className="hidden shrink-0 text-xs text-muted-foreground sm:block">
-                {formatDate(employer.createdAt)}
+                {formatDate(employer.createdAt.slice(0, 10))}
               </span>
               <div className="flex shrink-0 gap-1.5">
                 <Button
@@ -382,7 +382,7 @@ function ActivityFeed() {
                   </div>
                   <time
                     dateTime={event.at}
-                    title={formatDate(event.at)}
+                    title={formatDate(event.at.slice(0, 10))}
                     className="shrink-0 text-xs text-muted-foreground"
                   >
                     {formatDistanceToNow(parseISO(event.at), { addSuffix: true })}

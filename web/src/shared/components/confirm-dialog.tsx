@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { Button } from "@/shared/ui/button";
 import {
   Dialog,
@@ -18,6 +19,8 @@ export function ConfirmDialog({
   cancelLabel = "Cancel",
   destructive = false,
   isConfirming = false,
+  // Optional extra content between description and footer (e.g. an input).
+  children,
   onOpenChange,
   onConfirm,
 }: {
@@ -28,6 +31,7 @@ export function ConfirmDialog({
   cancelLabel?: string;
   destructive?: boolean;
   isConfirming?: boolean;
+  children?: ReactNode;
   onOpenChange: (open: boolean) => void;
   onConfirm: () => void;
 }) {
@@ -38,6 +42,7 @@ export function ConfirmDialog({
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
+        {children ? <div className="pb-2">{children}</div> : null}
         <DialogFooter>
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             {cancelLabel}
