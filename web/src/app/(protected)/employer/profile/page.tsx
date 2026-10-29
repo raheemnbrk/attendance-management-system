@@ -28,6 +28,7 @@ import { FormError } from "@/shared/ui/form-error";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { Badge } from "@/shared/ui/badge";
+import { PasswordInput } from "@/shared/components/password-input";
 
 function apiErrorMessage(error: unknown): string | null {
   return error instanceof ApiError ? error.message : null;
@@ -162,9 +163,8 @@ export default function ProfilePage() {
           >
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="password-current">Current password</Label>
-              <Input
+              <PasswordInput
                 id="password-current"
-                type="password"
                 autoComplete="current-password"
                 {...passwordForm.register("currentPassword")}
               />
@@ -172,9 +172,8 @@ export default function ProfilePage() {
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="password-new">New password</Label>
-              <Input
+              <PasswordInput
                 id="password-new"
-                type="password"
                 autoComplete="new-password"
                 {...passwordForm.register("newPassword")}
               />
@@ -182,9 +181,8 @@ export default function ProfilePage() {
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="password-confirm">Confirm new password</Label>
-              <Input
+              <PasswordInput
                 id="password-confirm"
-                type="password"
                 autoComplete="new-password"
                 {...passwordForm.register("confirmPassword")}
               />
