@@ -10,7 +10,7 @@ export async function GET(request: Request): Promise<Response> {
 
   let backendResponse: Response;
   try {
-    backendResponse = await fetch(`${BACKEND_URL}/api/export${search}`, {
+    backendResponse = await fetch(`${BACKEND_URL}/api/attendance/export${search}`, {
       headers: authorization ? { authorization } : undefined,
     });
   } catch {

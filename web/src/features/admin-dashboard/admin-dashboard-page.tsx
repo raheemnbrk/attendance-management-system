@@ -3,7 +3,6 @@
 import { formatDistanceToNow, parseISO } from "date-fns";
 import {
   Inbox,
-  ShieldAlert,
   UserCheck,
   UserPlus,
   UserX,
@@ -20,10 +19,10 @@ import {
 } from "@/features/employers/use-employers";
 import { ConfirmDialog } from "@/shared/components/confirm-dialog";
 import { EmptyState } from "@/shared/components/empty-state";
+import { QueryErrorAlert } from "@/shared/components/query-error-alert";
 import { apiErrorMessage } from "@/shared/lib/api";
 import { formatDate } from "@/shared/lib/format";
 import { cn } from "@/shared/lib/utils";
-import { Alert, AlertDescription, AlertTitle } from "@/shared/ui/alert";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import {
@@ -62,11 +61,12 @@ function StatCards() {
 
   if (stats.isError) {
     return (
-      <Alert variant="destructive">
-        <ShieldAlert aria-hidden="true" />
-        <AlertTitle>Failed to load platform stats</AlertTitle>
-        <AlertDescription>{apiErrorMessage(stats.error)}</AlertDescription>
-      </Alert>
+      <QueryErrorAlert
+        title="Failed to load platform stats"
+        error={stats.error}
+        onRetry={() => void stats.refetch()}
+        isRetrying={stats.isRefetching}
+      />
     );
   }
 
@@ -192,11 +192,12 @@ function TrendCharts() {
           <Skeleton className="h-64 rounded-xl" />
         </div>
       ) : trends.isError ? (
-        <Alert variant="destructive">
-          <ShieldAlert aria-hidden="true" />
-          <AlertTitle>Failed to load trends</AlertTitle>
-          <AlertDescription>{apiErrorMessage(trends.error)}</AlertDescription>
-        </Alert>
+        <QueryErrorAlert
+          title="Failed to load trends"
+          error={trends.error}
+          onRetry={() => void trends.refetch()}
+          isRetrying={trends.isRefetching}
+        />
       ) : (
         <div className="grid gap-4 lg:grid-cols-2">
           <TrendChart title="Employer registrations" entries={trends.data.registrations} />
@@ -257,11 +258,12 @@ function PendingApprovals() {
             ))}
           </div>
         ) : pending.isError ? (
-          <Alert variant="destructive">
-            <ShieldAlert aria-hidden="true" />
-            <AlertTitle>Failed to load pending requests</AlertTitle>
-            <AlertDescription>{apiErrorMessage(pending.error)}</AlertDescription>
-          </Alert>
+          <QueryErrorAlert
+            title="Failed to load pending requests"
+            error={pending.error}
+            onRetry={() => void pending.refetch()}
+            isRetrying={pending.isRefetching}
+          />
         ) : pending.data.items.length === 0 ? (
           <EmptyState icon={Inbox} title="No pending requests" description="All caught up." />
         ) : (
@@ -359,11 +361,12 @@ function ActivityFeed() {
             ))}
           </div>
         ) : activity.isError ? (
-          <Alert variant="destructive">
-            <ShieldAlert aria-hidden="true" />
-            <AlertTitle>Failed to load activity</AlertTitle>
-            <AlertDescription>{apiErrorMessage(activity.error)}</AlertDescription>
-          </Alert>
+          <QueryErrorAlert
+            title="Failed to load activity"
+            error={activity.error}
+            onRetry={() => void activity.refetch()}
+            isRetrying={activity.isRefetching}
+          />
         ) : activity.data?.length ? (
           <ul className="divide-y divide-border">
             {activity.data.map((event) => {
