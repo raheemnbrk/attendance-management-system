@@ -1,12 +1,19 @@
 import type { ReactNode } from "react";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { getDashboardPath, ROLE_COOKIE_NAME } from "@/shared/lib/dashboard-path";
 import { EmployerRoute } from "@/features/auth/employer-route";
 
-// Auth is resolved on the client (silent refresh + in-memory access token),
-// so this segment intentionally renders a loading state until the session is
-// known. Opt out of instant-navigation validation for it. The auth gate and
-// app shell live in the parent (protected) layout.
 export const instant = false;
 
-export default function EmployerLayout({ children }: { children: ReactNode }) {
+// Server-side role gate (works even without the proxy): an ADMIN cookie
+// landing on the employer area is bounced to their own dashboard.
+export default async function EmployerLayout({ children }: { children: ReactNode }) {
+  const role = (await cookies()).get(ROLE_COOKIE_NAME)?.value;
+
+  if (role && role !== "EMPLOYER") {
+    redirect(getDashboardPath(role));
+  }
+
   return <EmployerRoute>{children}</EmployerRoute>;
 }

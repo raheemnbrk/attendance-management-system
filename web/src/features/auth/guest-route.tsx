@@ -2,18 +2,19 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
+import { getDashboardPath } from "@/shared/lib/dashboard-path";
 import { LoadingScreen } from "@/shared/components/loading-screen";
 import { useAuthStore } from "./auth.store";
+import type { Role } from "@/shared/types/auth";
 
-function dashboardFor(role: string): string | null {
-  if (role === "ADMIN") {
-    return "/admin/dashboard";
+function dashboardFor(role: Role): string | null {
+  if (role === "EMPLOYEE") {
+    // Employee accounts use the mobile app; leave them on the auth pages.
+    return null;
   }
-  if (role === "EMPLOYER") {
-    return "/employer/dashboard";
-  }
-  // Employee accounts use the mobile app; leave them on the auth pages.
-  return null;
+
+  // ADMIN -> /admin/dashboard, EMPLOYER -> /employer/dashboard.
+  return getDashboardPath(role);
 }
 
 // Auth pages are guest-only: signed-in employers/admins are bounced to their

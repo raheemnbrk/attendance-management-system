@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { configureApi } from "@/shared/lib/api";
 import type { AuthUser, TokenPair } from "@/shared/types/auth";
+import { clearRoleCookie, setRoleCookie } from "./role-cookie";
 import { me, refresh } from "./auth.service";
 
 const REFRESH_TOKEN_KEY = "attendance.refreshToken";
@@ -22,6 +23,8 @@ export const useAuthStore = create<AuthState>((set) => ({
   status: "loading",
   setSession: (user, tokens) => {
     persistRefreshToken(tokens.refreshToken);
+    // The role cookie drives server-side guards (proxy + route layouts).
+    setRoleCookie(user.role);
     set({ user, accessToken: tokens.accessToken, status: "authenticated" });
   },
   setTokens: (tokens) => {
@@ -30,6 +33,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
   clearSession: () => {
     clearPersistedRefreshToken();
+    clearRoleCookie();
     set({ user: null, accessToken: null, status: "unauthenticated" });
   },
 }));
@@ -64,6 +68,7 @@ async function runBootstrap(): Promise<void> {
     const tokens = await refresh(refreshToken);
     useAuthStore.getState().setTokens(tokens);
     const user = await me();
+    setRoleCookie(user.role);
     useAuthStore.setState({ user, status: "authenticated" });
   } catch {
     useAuthStore.getState().clearSession();

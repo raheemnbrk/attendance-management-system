@@ -6,6 +6,7 @@ import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { Clock, Lock, Mail } from "lucide-react";
+import { getDashboardPath } from "@/shared/lib/dashboard-path";
 import { ApiError } from "@/shared/types/api";
 import { PasswordInput } from "@/shared/components/password-input";
 import { Alert, AlertDescription, AlertTitle } from "@/shared/ui/alert";
@@ -93,7 +94,8 @@ export function LoginForm() {
           setRoleNotice("employee");
           return;
         }
-        router.replace(data.user.role === "ADMIN" ? "/admin/dashboard" : "/employer/dashboard");
+        // Role-aware: ADMIN -> /admin/dashboard, EMPLOYER -> /employer/dashboard.
+        router.replace(getDashboardPath(data.user.role));
       },
     });
   }
