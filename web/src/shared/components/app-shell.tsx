@@ -10,6 +10,7 @@ import {
   Menu,
   UserRound,
   Users,
+  type LucideIcon,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useAuthStore } from "@/features/auth/auth.store";
@@ -34,12 +35,15 @@ import {
 } from "@/shared/ui/sheet";
 import { ThemeToggle } from "./theme-toggle";
 
-const NAV_ITEMS = [
+export type AppNavItem = { href: string; label: string; icon: LucideIcon };
+
+// Default (employer) navigation; admin pages pass their own set + hrefs.
+const EMPLOYER_NAV_ITEMS: AppNavItem[] = [
   { href: "/employer/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/employer/employees", label: "Employees", icon: Users },
   { href: "/employer/attendance", label: "Attendance", icon: CalendarCheck },
   { href: "/employer/reports", label: "Reports", icon: BarChart3 },
-] as const;
+];
 
 function getInitials(name: string): string {
   return name
@@ -50,12 +54,20 @@ function getInitials(name: string): string {
     .join("");
 }
 
-function SidebarNav({ className, onNavigate }: { className?: string; onNavigate?: () => void }) {
+function SidebarNav({
+  items,
+  className,
+  onNavigate,
+}: {
+  items: AppNavItem[];
+  className?: string;
+  onNavigate?: () => void;
+}) {
   const pathname = usePathname();
 
   return (
     <nav className={cn("flex flex-col gap-1 p-3", className)}>
-      {NAV_ITEMS.map((item) => {
+      {items.map((item) => {
         const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
 
         return (
@@ -80,9 +92,10 @@ function SidebarNav({ className, onNavigate }: { className?: string; onNavigate?
   );
 }
 
-function Brand({ className }: { className?: string }) {
+function Brand({ href, className }: { href: string; className?: string }) {
   return (
-    <div
+    <Link
+      href={href}
       className={cn(
         "flex h-14 shrink-0 items-center gap-2 border-b border-border px-4 text-sm font-semibold tracking-tight",
         className,
@@ -92,11 +105,11 @@ function Brand({ className }: { className?: string }) {
         A
       </span>
       {env.NEXT_PUBLIC_APP_NAME}
-    </div>
+    </Link>
   );
 }
 
-function UserMenu() {
+function UserMenu({ profileHref }: { profileHref: string }) {
   const user = useAuthStore((state) => state.user);
   const logout = useLogout();
 
@@ -127,7 +140,7 @@ function UserMenu() {
           {user.role}
         </Badge>
         <DropdownMenuItem asChild>
-          <Link href="/employer/profile">
+          <Link href={profileHref}>
             <UserRound aria-hidden="true" />
             Profile
           </Link>
@@ -141,7 +154,20 @@ function UserMenu() {
   );
 }
 
-export function AppShell({ children }: { children: ReactNode }) {
+export function AppShell({
+  children,
+  navItems = EMPLOYER_NAV_ITEMS,
+  brandHref = "/employer/dashboard",
+  profileHref = "/employer/profile",
+}: {
+  children: ReactNode;
+  /** Sidebar items; defaults to the employer navigation. */
+  navItems?: AppNavItem[];
+  /** Where the brand/logo and mobile title link to. */
+  brandHref?: string;
+  /** "Profile" entry inside the user menu. */
+  profileHref?: string;
+}) {
   return (
     <div className="flex min-h-dvh">
       {/* Desktop sidebar */}
@@ -149,8 +175,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         data-print-hide
         className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-border bg-card md:flex md:flex-col"
       >
-        <Brand />
-        <SidebarNav className="flex-1 overflow-y-auto" />
+        <Brand href={brandHref} />
+        <SidebarNav items={navItems} className="flex-1 overflow-y-auto" />
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
@@ -167,21 +193,18 @@ export function AppShell({ children }: { children: ReactNode }) {
             </SheetTrigger>
             <SheetContent side="left" className="w-64 p-0">
               <SheetTitle className="sr-only">Navigation</SheetTitle>
-              <Brand />
-              <SidebarNav className="flex-1 overflow-y-auto pb-6" />
+              <Brand href={brandHref} />
+              <SidebarNav items={navItems} className="flex-1 overflow-y-auto pb-6" />
             </SheetContent>
           </Sheet>
 
-          <Link
-            href="/employer/dashboard"
-            className="truncate text-sm font-semibold tracking-tight md:hidden"
-          >
+          <Link href={brandHref} className="truncate text-sm font-semibold tracking-tight md:hidden">
             {env.NEXT_PUBLIC_APP_NAME}
           </Link>
 
           <div className="ml-auto flex items-center gap-1.5">
             <ThemeToggle />
-            <UserMenu />
+            <UserMenu profileHref={profileHref} />
           </div>
         </header>
 
