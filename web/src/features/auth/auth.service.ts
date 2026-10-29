@@ -1,9 +1,18 @@
 import { apiRequest } from "@/shared/lib/api";
 import type { AuthUser, LoginResponse, TokenPair } from "@/shared/types/auth";
-import type { LoginInput } from "./auth.schema";
+import type { LoginInput, RegisterEmployerInput } from "./auth.schema";
 
 export async function login(input: LoginInput): Promise<LoginResponse> {
   return apiRequest<LoginResponse>({ method: "POST", url: "/users/login", data: input });
+}
+
+// New employer accounts start as PENDING until an admin approves them.
+export async function registerEmployer(input: RegisterEmployerInput): Promise<{ userId: string }> {
+  return apiRequest<{ userId: string }>({
+    method: "POST",
+    url: "/users/register-employer",
+    data: input,
+  });
 }
 
 export async function refresh(refreshToken: string): Promise<TokenPair> {
