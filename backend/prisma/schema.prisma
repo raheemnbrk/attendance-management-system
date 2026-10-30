@@ -25,7 +25,7 @@ model User {
   name            String
   email           String         @unique
   passwordHash    String
-  role            Role           @default(EMPLOYEE)
+  role            Role
   department      String?
   company         String?
   status          AccountStatus  @default(PENDING)

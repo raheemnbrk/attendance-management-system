@@ -1,4 +1,4 @@
-import type { PrismaClient, User } from "@prisma/client";
+import type { AccountStatus, PrismaClient, Role, User } from "@prisma/client";
 import { prisma } from "../../shared/lib/prisma";
 import type { AuthUser } from "../../shared/types/auth";
 import { AppError } from "../../shared/utils/app-error";
@@ -249,14 +249,17 @@ export async function createEmployee(employerId: string, input: CreateEmployeeIn
   const temporaryPassword = input.password ?? generateRandomPassword();
   const passwordHash = await hashPassword(temporaryPassword);
 
+  const role: Role = "EMPLOYEE";
+  const status: AccountStatus = "APPROVED";
+
   const employee = await prisma.user.create({
     data: {
       name: input.name,
       email: input.email,
       passwordHash,
       department: input.department,
-      role: "EMPLOYEE",
-      status: "APPROVED",
+      role,
+      status,
       employerId,
     },
   });
