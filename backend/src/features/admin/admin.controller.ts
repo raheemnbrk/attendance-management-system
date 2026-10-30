@@ -10,6 +10,7 @@ import {
   listAllUsers,
   listEmployerEmployees,
   listEmployers,
+  listUserRoleCounts,
   rejectEmployer,
   setEmployerSuspended,
 } from "./admin.service";
@@ -67,6 +68,11 @@ export const reactivateEmployerHandler = asyncHandler(
 export const usersListHandler = asyncHandler(async (req: Request, res: Response) => {
   const query = userListQuerySchema.parse(req.query);
   const result = await listAllUsers(query);
+  res.status(200).json({ success: true, data: result });
+});
+
+export const usersCountHandler = asyncHandler(async (_req: Request, res: Response) => {
+  const result = await listUserRoleCounts();
   res.status(200).json({ success: true, data: result });
 });
 

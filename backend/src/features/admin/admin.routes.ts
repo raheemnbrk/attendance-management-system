@@ -13,6 +13,7 @@ import {
   statsHandler,
   suspendEmployerHandler,
   trendsHandler,
+  usersCountHandler,
   usersListHandler,
 } from "./admin.controller";
 import { rejectEmployerSchema } from "./admin.schema";
@@ -22,6 +23,7 @@ export const adminRouter = Router();
 const adminOnly = [authenticate, requireRole("ADMIN")] as const;
 
 adminRouter.get("/", ...adminOnly, adminLimiter, usersListHandler);
+adminRouter.get("/counts", ...adminOnly, adminLimiter, usersCountHandler);
 adminRouter.get("/stats", ...adminOnly, adminLimiter, statsHandler);
 adminRouter.get("/stats/trends", ...adminOnly, adminLimiter, trendsHandler);
 adminRouter.get("/activity", ...adminOnly, adminLimiter, activityHandler);

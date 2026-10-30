@@ -41,6 +41,7 @@ model User {
 
   @@index([employerId])
   @@index([role, status])
+  @@index([createdAt])
 }
 
 model Attendance {

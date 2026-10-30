@@ -48,6 +48,18 @@ function buildNameEmailCompanyFilter(search: string): Prisma.UserWhereInput[] {
   ];
 }
 
+// Wider search for the admin users list: in addition to name, email, company
+// and department it also matches an employee's employer company and employer
+// name, so searching for a company finds its employees too.
+function buildUserSearchFilter(search: string): Prisma.UserWhereInput[] {
+  return [
+    ...buildNameEmailCompanyFilter(search),
+    { department: { contains: search, mode: "insensitive" } },
+    { employer: { is: { name: { contains: search, mode: "insensitive" } } } },
+    { employer: { is: { company: { contains: search, mode: "insensitive" } } } },
+  ];
+}
+
 async function findEmployerOrThrow(id: string) {
   const employer = await prisma.user.findFirst({ where: { id, role: "EMPLOYER" } });
 
@@ -226,15 +238,18 @@ export type AdminUserRow = {
   status: AccountStatus;
   isActive: boolean;
   createdAt: Date;
-  employerName: string | null;
+  employer: { id: string; name: string; company: string | null } | null;
 };
 
 export async function listAllUsers(query: UserListQuery): Promise<Paginated<AdminUserRow>> {
   const where: Prisma.UserWhereInput = {
-    OR: query.search ? buildNameEmailCompanyFilter(query.search) : undefined,
-    ...(query.role ? { role: query.role } : {}),
-    ...(query.status ? { status: query.status } : {}),
+    role: query.role,
+    status: query.status,
+    OR: query.search ? buildUserSearchFilter(query.search) : undefined,
   };
+
+  const orderBy: Prisma.UserOrderByWithRelationInput =
+    query.sortBy === "name" ? { name: query.sortOrder } : { createdAt: query.sortOrder };
 
   const [total, users] = await Promise.all([
     prisma.user.count({ where }),
@@ -251,9 +266,9 @@ export async function listAllUsers(query: UserListQuery): Promise<Paginated<Admi
         status: true,
         isActive: true,
         createdAt: true,
-        employer: { select: { name: true } },
+        employer: { select: { id: true, name: true, company: true } },
       },
-      orderBy: { createdAt: "desc" },
+      orderBy,
       skip: (query.page - 1) * query.limit,
       take: query.limit,
     }),
@@ -262,13 +277,31 @@ export async function listAllUsers(query: UserListQuery): Promise<Paginated<Admi
   return {
     items: users.map(({ employer, ...user }) => ({
       ...user,
-      employerName: employer?.name ?? null,
+      employer: employer ?? null,
     })),
     total,
     page: query.page,
     limit: query.limit,
     totalPages: Math.ceil(total / query.limit),
   };
+}
+
+export type UserRoleCounts = {
+  all: number;
+  admin: number;
+  employer: number;
+  employee: number;
+};
+
+export async function listUserRoleCounts(): Promise<UserRoleCounts> {
+  const [all, admin, employer, employee] = await Promise.all([
+    prisma.user.count(),
+    prisma.user.count({ where: { role: "ADMIN" } }),
+    prisma.user.count({ where: { role: "EMPLOYER" } }),
+    prisma.user.count({ where: { role: "EMPLOYEE" } }),
+  ]);
+
+  return { all, admin, employer, employee };
 }
 
 export async function listEmployers(query: EmployerStatusQuery): Promise<Paginated<PublicUser>> {

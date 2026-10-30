@@ -7,6 +7,12 @@ const limitSchema = z.coerce
   .min(1, "Limit must be at least 1")
   .max(100, "Limit must be at most 100")
   .default(10);
+const userLimitSchema = z.coerce
+  .number()
+  .int()
+  .min(1, "Limit must be at least 1")
+  .max(50, "Limit must be at most 50")
+  .default(10);
 
 const searchSchema = z
   .string()
@@ -33,7 +39,9 @@ export const userListQuerySchema = z.object({
   role: z.enum(["ADMIN", "EMPLOYER", "EMPLOYEE"]).optional(),
   status: z.enum(["PENDING", "APPROVED", "REJECTED"]).optional(),
   page: pageSchema,
-  limit: limitSchema,
+  limit: userLimitSchema,
+  sortBy: z.enum(["name", "createdAt"]).default("createdAt"),
+  sortOrder: z.enum(["asc", "desc"]).default("desc"),
 });
 
 export const trendsQuerySchema = z.object({
