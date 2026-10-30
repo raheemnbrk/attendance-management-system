@@ -8,6 +8,12 @@ const REFRESH_TOKEN_KEY = "attendance.refreshToken";
 
 export type AuthStatus = "loading" | "authenticated" | "unauthenticated";
 
+// Employees use the mobile app: the web never keeps a session for them, so no
+// tokens are stored and no role cookie is set for that role.
+function isEmployee(user: AuthUser): boolean {
+  return user.role === "EMPLOYEE";
+}
+
 type AuthState = {
   user: AuthUser | null;
   accessToken: string | null;
@@ -22,6 +28,13 @@ export const useAuthStore = create<AuthState>((set) => ({
   accessToken: null,
   status: "loading",
   setSession: (user, tokens) => {
+    if (isEmployee(user)) {
+      clearPersistedRefreshToken();
+      clearRoleCookie();
+      set({ user: null, accessToken: null, status: "unauthenticated" });
+      return;
+    }
+
     persistRefreshToken(tokens.refreshToken);
     // The role cookie drives server-side guards (proxy + route layouts).
     setRoleCookie(user.role);
@@ -68,6 +81,15 @@ async function runBootstrap(): Promise<void> {
     const tokens = await refresh(refreshToken);
     useAuthStore.getState().setTokens(tokens);
     const user = await me();
+
+    if (isEmployee(user)) {
+      // References to the mobile app only: never restore a web session.
+      clearPersistedRefreshToken();
+      clearRoleCookie();
+      useAuthStore.setState({ user: null, accessToken: null, status: "unauthenticated" });
+      return;
+    }
+
     setRoleCookie(user.role);
     useAuthStore.setState({ user, status: "authenticated" });
   } catch {
