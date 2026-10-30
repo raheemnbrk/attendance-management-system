@@ -1,28 +1,6 @@
 import { apiRequest, parsePaginated } from "@/shared/lib/api";
 import type { Paginated } from "@/shared/types/api";
-import type { AccountStatus, Role } from "@/shared/types/auth";
-
-// Mirrors backend AdminUserRow (no password data anywhere).
-export type AdminUserRow = {
-  id: string;
-  name: string;
-  email: string;
-  role: Role;
-  company: string | null;
-  department: string | null;
-  status: AccountStatus;
-  isActive: boolean;
-  createdAt: string;
-  employerName: string | null;
-};
-
-export type ListAdminUsersQuery = {
-  search?: string;
-  role?: Role;
-  status?: AccountStatus;
-  page: number;
-  limit: number;
-};
+import type { AdminUserRow, ListAdminUsersQuery, UserRoleCounts } from "./users.types";
 
 export async function listAdminUsers(
   query: ListAdminUsersQuery,
@@ -36,8 +14,14 @@ export async function listAdminUsers(
       ...(query.status ? { status: query.status } : {}),
       page: query.page,
       limit: query.limit,
+      sortBy: query.sortBy,
+      sortOrder: query.sortOrder,
     },
   });
 
   return parsePaginated<AdminUserRow>(data, "users list", (item) => item as AdminUserRow);
+}
+
+export async function getUserRoleCounts(): Promise<UserRoleCounts> {
+  return apiRequest<UserRoleCounts>({ method: "GET", url: "/users/counts" });
 }

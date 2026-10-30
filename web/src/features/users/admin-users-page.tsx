@@ -1,16 +1,23 @@
 "use client";
 
-import { Inbox, ShieldAlert, UserRoundSearch } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
 import {
-  useAdminUsers,
-} from "./use-users";
+  ArrowDown,
+  ArrowUp,
+  Inbox,
+  Search,
+  UserRoundSearch,
+  X,
+} from "lucide-react";
+import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { EmptyState } from "@/shared/components/empty-state";
+import { QueryErrorAlert } from "@/shared/components/query-error-alert";
 import { TablePagination } from "@/shared/components/table-pagination";
 import { apiErrorMessage } from "@/shared/lib/api";
 import { formatDate } from "@/shared/lib/format";
-import { Alert, AlertDescription, AlertTitle } from "@/shared/ui/alert";
 import { Badge } from "@/shared/ui/badge";
+import { Button } from "@/shared/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
 import {
@@ -21,6 +28,7 @@ import {
   SelectValue,
 } from "@/shared/ui/select";
 import { Skeleton } from "@/shared/ui/skeleton";
+import { Tabs, TabsList, TabsTrigger } from "@/shared/ui/tabs";
 import {
   Table,
   TableBody,
@@ -29,36 +37,67 @@ import {
   TableHeader,
   TableRow,
 } from "@/shared/ui/table";
-import type { AccountStatus, Role } from "@/shared/types/auth";
+import { DEFAULT_USERS_QUERY, usersQuerySchema } from "./users.schema";
+import { useAdminUsers, useUserRoleCounts } from "./use-users";
+import type {
+  AdminUserRow,
+  UsersQuery,
+  UsersRoleFilter,
+  UsersSortBy,
+  UsersSortOrder,
+  UsersStatusFilter,
+} from "./users.types";
 
-const PAGE_SIZE = 10;
+type RoleTab = {
+  value: UsersRoleFilter;
+  label: string;
+  countKey: "all" | "admin" | "employer" | "employee";
+};
 
-// Radix Select forbids empty-string values, so "all" is the unset sentinel.
-const ROLE_OPTIONS: { value: Role | "all"; label: string }[] = [
-  { value: "all", label: "All roles" },
-  { value: "ADMIN", label: "Admins" },
-  { value: "EMPLOYER", label: "Employers" },
-  { value: "EMPLOYEE", label: "Employees" },
+const ROLE_TABS: RoleTab[] = [
+  { value: "all", label: "All", countKey: "all" },
+  { value: "ADMIN", label: "Admin", countKey: "admin" },
+  { value: "EMPLOYER", label: "Employer", countKey: "employer" },
+  { value: "EMPLOYEE", label: "Employee", countKey: "employee" },
 ];
 
-const STATUS_OPTIONS: { value: AccountStatus | "all"; label: string }[] = [
+const STATUS_OPTIONS: { value: UsersStatusFilter; label: string }[] = [
   { value: "all", label: "All statuses" },
   { value: "PENDING", label: "Pending" },
   { value: "APPROVED", label: "Approved" },
   { value: "REJECTED", label: "Rejected" },
 ];
 
-function roleBadge(role: Role): { variant: "muted" | "info" | "success"; label: string } {
-  if (role === "ADMIN") {
-    return { variant: "info", label: "Admin" };
-  }
-  if (role === "EMPLOYER") {
-    return { variant: "success", label: "Employer" };
-  }
-  return { variant: "muted", label: "Employee" };
+function getInitials(name: string): string {
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
 }
 
-function accountStatusLabel(status: AccountStatus): string {
+function roleVariant(role: AdminUserRow["role"]): "default" | "info" | "muted" {
+  if (role === "ADMIN") {
+    return "default";
+  }
+  if (role === "EMPLOYER") {
+    return "info";
+  }
+  return "muted";
+}
+
+function statusVariant(status: AdminUserRow["status"]): "warning" | "success" | "destructive" {
+  if (status === "PENDING") {
+    return "warning";
+  }
+  if (status === "APPROVED") {
+    return "success";
+  }
+  return "destructive";
+}
+
+function statusLabel(status: AdminUserRow["status"]): string {
   if (status === "PENDING") {
     return "Pending";
   }
@@ -68,48 +107,168 @@ function accountStatusLabel(status: AccountStatus): string {
   return "Rejected";
 }
 
-export function AdminUsersPage() {
-  const [searchInput, setSearchInput] = useState("");
-  const [search, setSearch] = useState("");
-  const [role, setRole] = useState<Role | "all">("all");
-  const [status, setStatus] = useState<AccountStatus | "all">("all");
-  const [page, setPage] = useState(1);
+function employerLabel(user: AdminUserRow): string {
+  if (user.role !== "EMPLOYEE" || !user.employer) {
+    return "—";
+  }
+  return user.employer.name || user.employer.company || "—";
+}
 
-  // Debounce: only query once typing pauses for 300ms.
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      setSearch(searchInput);
-      setPage(1);
-    }, 300);
-    return () => window.clearTimeout(timer);
-  }, [searchInput]);
+function SortableHead({
+  label,
+  column,
+  activeColumn,
+  activeOrder,
+  onSort,
+}: {
+  label: string;
+  column: UsersSortBy;
+  activeColumn: UsersSortBy;
+  activeOrder: UsersSortOrder;
+  onSort: (column: UsersSortBy) => void;
+}) {
+  const isActive = activeColumn === column;
+  const ArrowIcon = isActive ? (activeOrder === "asc" ? ArrowUp : ArrowDown) : null;
 
-  // Reflect filters in the URL so views can be shared (best effort).
-  useEffect(() => {
-    const params = new URLSearchParams();
-    if (search.trim()) {
-      params.set("search", search.trim());
-    }
-    if (role !== "all") {
-      params.set("role", role);
-    }
-    if (status !== "all") {
-      params.set("status", status);
-    }
-    const query = params.toString();
-    window.history.replaceState(null, "", query ? `/admin/users?${query}` : "/admin/users");
-  }, [search, role, status]);
+  return (
+    <TableHead aria-sort={isActive ? (activeOrder === "asc" ? "ascending" : "descending") : "none"}>
+      <button
+        type="button"
+        onClick={() => onSort(column)}
+        className="inline-flex items-center gap-1 hover:text-foreground"
+      >
+        {label}
+        {ArrowIcon ? <ArrowIcon aria-hidden="true" className="size-3" /> : null}
+      </button>
+    </TableHead>
+  );
+}
+
+function NameCell({ user }: { user: AdminUserRow }) {
+  const initials = getInitials(user.name);
+  const body = (
+    <>
+      <span className="grid size-8 shrink-0 place-items-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
+        {initials}
+      </span>
+      <div className="flex min-w-0 flex-col">
+        <span className="truncate font-medium">{user.name}</span>
+        <span className="truncate text-xs text-muted-foreground">{user.email}</span>
+      </div>
+    </>
+  );
+
+  if (user.role === "EMPLOYER") {
+    return (
+      <Link
+        href={`/admin/employers/${user.id}`}
+        className="flex min-w-0 items-center gap-3 underline-offset-4 hover:underline"
+      >
+        {body}
+      </Link>
+    );
+  }
+
+  return <div className="flex min-w-0 items-center gap-3">{body}</div>;
+}
+
+function UsersPageInner() {
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const router = useRouter();
+
+  const query = useMemo<UsersQuery>(() => {
+    const parsed = usersQuerySchema.safeParse(Object.fromEntries(searchParams.entries()));
+    return parsed.success ? { ...DEFAULT_USERS_QUERY, ...parsed.data } : DEFAULT_USERS_QUERY;
+  }, [searchParams]);
+
+  const goTo = useCallback(
+    (next: UsersQuery, mode: "push" | "replace") => {
+      const params = new URLSearchParams();
+      const search = next.search.trim();
+      if (search) {
+        params.set("search", search);
+      }
+      if (next.role !== "all") {
+        params.set("role", next.role);
+      }
+      if (next.status !== "all") {
+        params.set("status", next.status);
+      }
+      params.set("page", String(next.page));
+      params.set("limit", String(next.limit));
+      params.set("sortBy", next.sortBy);
+      params.set("sortOrder", next.sortOrder);
+      const url = `${pathname}${params.toString() ? `?${params.toString()}` : ""}`;
+      router[mode](url, { scroll: false });
+    },
+    [pathname, router],
+  );
+
+  // Changing a filter resets to page 1; only the page control moves pages.
+  const applyFilter = useCallback(
+    (patch: Partial<UsersQuery>) => {
+      goTo({ ...query, ...patch, page: 1 }, "push");
+    },
+    [goTo, query],
+  );
+
+  const toggleSort = useCallback(
+    (column: UsersSortBy) => {
+      if (query.sortBy === column) {
+        goTo(
+          { ...query, sortOrder: query.sortOrder === "asc" ? "desc" : "asc" },
+          "push",
+        );
+        return;
+      }
+      goTo({ ...query, sortBy: column, sortOrder: "asc" }, "push");
+    },
+    [goTo, query],
+  );
+
+  const hasFilters =
+    query.search.trim().length > 0 || query.role !== "all" || query.status !== "all";
 
   const users = useAdminUsers({
-    search,
-    role: role === "all" ? undefined : role,
-    status: status === "all" ? undefined : status,
-    page,
-    limit: PAGE_SIZE,
+    search: query.search.trim() || undefined,
+    role: query.role === "all" ? undefined : query.role,
+    status: query.status === "all" ? undefined : query.status,
+    page: query.page,
+    limit: query.limit,
+    sortBy: query.sortBy,
+    sortOrder: query.sortOrder,
   });
+  const counts = useUserRoleCounts();
 
-  const rows = useMemo(() => users.data?.items ?? [], [users.data]);
+  const [searchInput, setSearchInput] = useState(query.search);
+  const [committedSearch, setCommittedSearch] = useState(query.search);
+
+  // Back/forward navigation: resync the input with whatever the URL controls.
+  useEffect(() => {
+    setSearchInput(query.search);
+    setCommittedSearch(query.search);
+  }, [query.search]);
+
+  // Debounce: only commit once typing pauses for 300ms.
+  useEffect(() => {
+    if (searchInput === committedSearch) {
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      setCommittedSearch(searchInput);
+      goTo({ ...query, search: searchInput, page: 1 }, "replace");
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [searchInput, committedSearch, goTo, query]);
+
+  const rows = users.data?.items ?? [];
+  const total = users.data?.total ?? 0;
   const totalPages = users.data?.totalPages ?? 1;
+
+  const clearFilters = useCallback(() => {
+    applyFilter({ search: "", role: "all", status: "all" });
+  }, [applyFilter]);
 
   return (
     <div className="space-y-6">
@@ -121,150 +280,197 @@ export function AdminUsersPage() {
       </div>
 
       <Card>
-        <CardHeader className="flex-row items-start justify-between gap-4 space-y-0">
+        <CardHeader className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div className="space-y-1.5">
             <CardTitle className="text-base">Platform users</CardTitle>
             <CardDescription>
-              {users.isLoading
-                ? "Loading users…"
-                : `${users.data?.total ?? 0} user${(users.data?.total ?? 0) === 1 ? "" : "s"}`}
+              {users.isLoading ? "Loading users…" : `${total} user${total === 1 ? "" : "s"}`}
             </CardDescription>
           </div>
-          <Input
-            value={searchInput}
-            onChange={(event) => setSearchInput(event.target.value)}
-            placeholder="Search name, email or company"
-            className="max-w-xs"
-            aria-label="Search users"
-          />
+          <div className="relative w-full md:max-w-xs">
+            <Search
+              className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden="true"
+            />
+            <Input
+              value={searchInput}
+              onChange={(event) => setSearchInput(event.target.value)}
+              placeholder="Search by name, email, company or department"
+              className="pr-9 pl-9"
+              aria-label="Search users"
+            />
+            {searchInput ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="absolute top-1/2 right-1 size-7 -translate-y-1/2"
+                aria-label="Clear search"
+                onClick={() => setSearchInput("")}
+              >
+                <X />
+              </Button>
+            ) : null}
+          </div>
         </CardHeader>
-        <div className="flex flex-wrap gap-3 px-6 pb-4">
-          <Select
-            value={role}
-            onValueChange={(value) => {
-              setRole(value as Role | "all");
-              setPage(1);
-            }}
-          >
-            <SelectTrigger size="sm" aria-label="Filter by role" className="w-40">
-              <SelectValue placeholder="Role" />
-            </SelectTrigger>
-            <SelectContent>
-              {ROLE_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select
-            value={status}
-            onValueChange={(value) => {
-              setStatus(value as AccountStatus | "all");
-              setPage(1);
-            }}
-          >
-            <SelectTrigger size="sm" aria-label="Filter by status" className="w-44">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              {STATUS_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+
+        <div className="flex flex-col gap-3 px-6 pb-4 lg:flex-row lg:items-center lg:justify-between">
+          <Tabs value={query.role} onValueChange={(value) => applyFilter({ role: value as UsersRoleFilter })}>
+            <TabsList aria-label="Filter by role">
+              {ROLE_TABS.map((tab) => {
+                const count = counts.data?.[tab.countKey];
+                return (
+                  <TabsTrigger key={tab.value} value={tab.value}>
+                    {tab.label}
+                    {counts.isLoading ? (
+                      <Skeleton className="h-4 w-6 rounded-full" />
+                    ) : count !== undefined ? (
+                      <Badge variant="muted">{count}</Badge>
+                    ) : null}
+                  </TabsTrigger>
+                );
+              })}
+            </TabsList>
+          </Tabs>
+          <div className="flex flex-wrap items-center gap-3">
+            <Select
+              value={query.status}
+              onValueChange={(value) => applyFilter({ status: value as UsersStatusFilter })}
+            >
+              <SelectTrigger size="sm" className="w-36" aria-label="Filter by status">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {STATUS_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {hasFilters ? (
+              <Button variant="ghost" size="sm" onClick={clearFilters}>
+                <X aria-hidden="true" />
+                Clear filters
+              </Button>
+            ) : null}
+          </div>
         </div>
+
         <CardContent>
           {users.isError ? (
-            <Alert variant="destructive">
-              <ShieldAlert aria-hidden="true" />
-              <AlertTitle>Failed to load users</AlertTitle>
-              <AlertDescription>{apiErrorMessage(users.error)}</AlertDescription>
-            </Alert>
+            <QueryErrorAlert
+              title="Failed to load users"
+              error={users.error}
+              onRetry={() => void users.refetch()}
+              isRetrying={users.isRefetching}
+            />
           ) : users.isLoading ? (
             <div className="space-y-2">
-              {[0, 1, 2, 3, 4].map((i) => (
+              {[0, 1, 2, 3, 4, 5].map((i) => (
                 <Skeleton key={i} className="h-12 rounded-lg" />
               ))}
             </div>
           ) : rows.length === 0 ? (
             <EmptyState
-              icon={search.trim() ? UserRoundSearch : Inbox}
-              title={search.trim() ? "No matches" : "No users"}
-              description={search.trim() ? "No users match your filters." : "No accounts yet."}
+              icon={hasFilters ? UserRoundSearch : Inbox}
+              title={hasFilters ? "No users found" : "No users yet"}
+              description={
+                hasFilters
+                  ? "No users match your filters."
+                  : "Accounts show up here as soon as they exist."
+              }
+              action={
+                hasFilters ? (
+                  <Button variant="outline" size="sm" onClick={clearFilters}>
+                    Clear filters
+                  </Button>
+                ) : undefined
+              }
             />
           ) : (
             <>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead className="hidden md:table-cell">Email</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead className="hidden lg:table-cell">Employer</TableHead>
-                    <TableHead className="hidden xl:table-cell">Department</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="hidden lg:table-cell">Created</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {rows.map((user) => {
-                    const badge = roleBadge(user.role);
-                    return (
+              <div className="grid grid-cols-1">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <SortableHead
+                        label="Name"
+                        column="name"
+                        activeColumn={query.sortBy}
+                        activeOrder={query.sortOrder}
+                        onSort={toggleSort}
+                      />
+                      <TableHead>Role</TableHead>
+                      <TableHead>Company</TableHead>
+                      <TableHead>Department</TableHead>
+                      <TableHead>Employer</TableHead>
+                      <TableHead>Status</TableHead>
+                      <SortableHead
+                        label="Created"
+                        column="createdAt"
+                        activeColumn={query.sortBy}
+                        activeOrder={query.sortOrder}
+                        onSort={toggleSort}
+                      />
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {rows.map((user) => (
                       <TableRow key={user.id}>
-                        <TableCell>
-                          <p className="font-medium">{user.name}</p>
-                          {user.role === "EMPLOYER" && user.company ? (
-                            <p className="text-xs text-muted-foreground">{user.company}</p>
-                          ) : null}
-                        </TableCell>
-                        <TableCell className="hidden text-sm text-muted-foreground md:table-cell">
-                          {user.email}
+                        <TableCell className="max-w-[16rem]">
+                          <NameCell user={user} />
                         </TableCell>
                         <TableCell>
-                          <Badge variant={badge.variant}>{badge.label}</Badge>
+                          <Badge variant={roleVariant(user.role)}>{user.role}</Badge>
                         </TableCell>
-                        <TableCell className="hidden text-sm text-muted-foreground lg:table-cell">
-                          {user.role === "EMPLOYEE" ? (user.employerName ?? "—") : "—"}
+                        <TableCell className="text-sm text-muted-foreground">
+                          {user.company ?? "—"}
                         </TableCell>
-                        <TableCell className="hidden text-sm text-muted-foreground xl:table-cell">
-                          {user.role === "EMPLOYEE" ? (user.department ?? "—") : "—"}
+                        <TableCell className="text-sm text-muted-foreground">
+                          {user.department ?? "—"}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {employerLabel(user)}
                         </TableCell>
                         <TableCell>
                           <div className="flex flex-wrap gap-1">
-                            {user.status !== "APPROVED" ? (
-                              <Badge
-                                variant={
-                                  user.status === "PENDING" ? "warning" : "destructive"
-                                }
-                              >
-                                {accountStatusLabel(user.status)}
-                              </Badge>
-                            ) : null}
+                            <Badge variant={statusVariant(user.status)}>{statusLabel(user.status)}</Badge>
                             <Badge variant={user.isActive ? "success" : "muted"}>
                               {user.isActive ? "Active" : "Inactive"}
                             </Badge>
                           </div>
                         </TableCell>
-                        <TableCell className="hidden text-sm text-muted-foreground lg:table-cell">
+                        <TableCell className="text-sm text-muted-foreground">
                           {formatDate(user.createdAt.slice(0, 10))}
                         </TableCell>
                       </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-              {totalPages > 1 ? (
-                <div className="mt-4 flex justify-end">
-                  <TablePagination page={page} totalPages={totalPages} onPageChange={setPage} />
-                </div>
-              ) : null}
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              <div className="mt-4">
+                <TablePagination
+                  page={query.page}
+                  totalPages={totalPages}
+                  onPageChange={(page) => goTo({ ...query, page }, "push")}
+                  total={total}
+                  pageSize={query.limit}
+                  onPageSizeChange={(limit) => applyFilter({ limit })}
+                />
+              </div>
             </>
           )}
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+export function AdminUsersPage() {
+  return (
+    <div className="min-h-40">
+      <UsersPageInner />
     </div>
   );
 }
