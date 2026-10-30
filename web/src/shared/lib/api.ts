@@ -1,10 +1,36 @@
 import axios, { AxiosError, AxiosHeaders, type AxiosRequestConfig } from "axios";
+import { z } from "zod";
 import { env } from "../config/env";
-import { ApiError, type ApiEnvelope, type ApiErrorEnvelope } from "../types/api";
+import { ApiError, type ApiEnvelope, type ApiErrorEnvelope, type Paginated } from "../types/api";
 
 export const api = axios.create({
   baseURL: env.NEXT_PUBLIC_API_BASE_URL,
 });
+
+// The base URL is "/api": request urls passed here must NOT already include
+// the prefix or axios would produce "/api/api/..." which the backend answers
+// with a 404 "Route not found".
+const BASE_URL_HAS_API_PREFIX = env.NEXT_PUBLIC_API_BASE_URL
+  .replace(/\/+$/, "")
+  .toLowerCase()
+  .endsWith("/api");
+
+function stripDoubledApiPrefix(url: string): string {
+  if (!BASE_URL_HAS_API_PREFIX) {
+    return url;
+  }
+
+  const rest = url.replace(/^\/+/, "");
+  if (rest.startsWith("api/") || rest === "api") {
+    const remainder = rest.slice(3);
+    if (remainder.length === 0) {
+      return "/";
+    }
+    return remainder.startsWith("/") ? remainder : `/${remainder}`;
+  }
+
+  return url;
+}
 
 type AuthBridge = {
   getAccessToken: () => string | null;
@@ -21,6 +47,10 @@ export function configureApi(bridge: AuthBridge): void {
 }
 
 api.interceptors.request.use((config) => {
+  if (typeof config.url === "string" && !/^https?:\/\//i.test(config.url)) {
+    config.url = stripDoubledApiPrefix(config.url);
+  }
+
   const accessToken = authBridge?.getAccessToken();
 
   if (accessToken && !config.headers.Authorization) {
@@ -84,6 +114,41 @@ api.interceptors.response.use(
 export async function apiRequest<T>(config: AxiosRequestConfig): Promise<T> {
   const response = await api.request<ApiEnvelope<T>>(config);
   return response.data.data;
+}
+
+// Shape guard for every paginated list the backend returns:
+// { success: true, data: { items, page, limit, total, totalPages } }. Parsing
+// here (instead of trusting the network) keeps list pages consistent; items
+// are validated per feature at the call site.
+const paginatedEnvelopeSchema = z.object({
+  items: z.array(z.unknown()),
+  total: z.number().int().nonnegative(),
+  page: z.number().int().positive(),
+  limit: z.number().int().positive(),
+  totalPages: z.number().int().nonnegative(),
+});
+
+export function parsePaginated<T>(
+  data: unknown,
+  context: string,
+  parseItem: (item: unknown) => T,
+): Paginated<T> {
+  const parsed = paginatedEnvelopeSchema.safeParse(data);
+
+  if (!parsed.success) {
+    throw new ApiError(
+      0,
+      `Invalid ${context} response: expected an items array with page, limit, total and totalPages.`,
+    );
+  }
+
+  return {
+    items: parsed.data.items.map((item) => parseItem(item)),
+    total: parsed.data.total,
+    page: parsed.data.page,
+    limit: parsed.data.limit,
+    totalPages: parsed.data.totalPages,
+  };
 }
 
 // Human-readable message for any thrown error (network, HTTP, or unknown).

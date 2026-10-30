@@ -1,4 +1,4 @@
-import { apiRequest } from "@/shared/lib/api";
+import { apiRequest, parsePaginated } from "@/shared/lib/api";
 import type { Paginated } from "@/shared/types/api";
 import type { AuthUser } from "@/shared/types/auth";
 
@@ -21,7 +21,7 @@ export type AdminEmployerDetails = AuthUser & {
 export async function listAdminEmployers(
   query: ListAdminEmployersQuery,
 ): Promise<Paginated<AdminEmployer>> {
-  const response = await apiRequest<Paginated<AdminEmployer>>({
+  const data = await apiRequest<unknown>({
     method: "GET",
     url: "/users/employers",
     params: {
@@ -32,11 +32,7 @@ export async function listAdminEmployers(
     },
   });
 
-  if (!Array.isArray(response?.items)) {
-    throw new Error("Invalid employer list response: expected an items array.");
-  }
-
-  return response;
+  return parsePaginated<AdminEmployer>(data, "employer list", (item) => item as AdminEmployer);
 }
 
 export async function getAdminEmployer(id: string): Promise<AdminEmployerDetails> {
@@ -57,7 +53,7 @@ export async function listAdminEmployerEmployees(
   id: string,
   query: EmployerEmployeesQuery,
 ): Promise<Paginated<AuthUser>> {
-  return apiRequest<Paginated<AuthUser>>({
+  const data = await apiRequest<unknown>({
     method: "GET",
     url: `/users/employers/${id}/employees`,
     params: {
@@ -66,6 +62,12 @@ export async function listAdminEmployerEmployees(
       limit: query.limit,
     },
   });
+
+  return parsePaginated<AuthUser>(
+    data,
+    "employer employees list",
+    (item) => item as AuthUser,
+  );
 }
 
 export async function approveEmployer(id: string): Promise<AdminEmployer> {

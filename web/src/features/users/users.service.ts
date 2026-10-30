@@ -1,4 +1,4 @@
-import { apiRequest } from "@/shared/lib/api";
+import { apiRequest, parsePaginated } from "@/shared/lib/api";
 import type { Paginated } from "@/shared/types/api";
 import type { AccountStatus, Role } from "@/shared/types/auth";
 
@@ -27,7 +27,7 @@ export type ListAdminUsersQuery = {
 export async function listAdminUsers(
   query: ListAdminUsersQuery,
 ): Promise<Paginated<AdminUserRow>> {
-  return apiRequest<Paginated<AdminUserRow>>({
+  const data = await apiRequest<unknown>({
     method: "GET",
     url: "/users",
     params: {
@@ -38,4 +38,6 @@ export async function listAdminUsers(
       limit: query.limit,
     },
   });
+
+  return parsePaginated<AdminUserRow>(data, "users list", (item) => item as AdminUserRow);
 }
