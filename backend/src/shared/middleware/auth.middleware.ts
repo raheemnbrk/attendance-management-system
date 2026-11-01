@@ -36,9 +36,26 @@ export const authenticate = asyncHandler(async (req: Request, _res: Response, ne
     }
   }
 
+  // A user with a temporary password may only inspect their profile, change
+  // their password or log out until the password is changed.
+  if (user.mustChangePassword && !isPasswordGateExempt(req)) {
+    throw new AppError(403, "Password change required");
+  }
+
   req.user = authUser;
   next();
 });
+
+// Exempt from the mustChangePassword gate, keyed on "<METHOD> <full path>"
+// (baseUrl holds the mount prefix when the middleware runs inside a router).
+function isPasswordGateExempt(req: Request): boolean {
+  const route = `${req.method} ${req.baseUrl}${req.path}`;
+  return (
+    route === "GET /api/users/me" ||
+    route === "PATCH /api/users/me/password" ||
+    route === "POST /api/users/logout"
+  );
+}
 
 export function requireRole(...roles: Role[]): RequestHandler {
   return (req: Request, _res: Response, next: NextFunction) => {

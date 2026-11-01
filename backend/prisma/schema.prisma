@@ -34,10 +34,11 @@ model User {
   employerId      String?
   employer        User?          @relation("EmployerEmployees", fields: [employerId], references: [id])
   employees       User[]         @relation("EmployerEmployees")
-  isActive        Boolean        @default(true)
-  refreshTokens   RefreshToken[]
-  attendances     Attendance[]
-  createdAt       DateTime       @default(now())
+  isActive             Boolean        @default(true)
+  mustChangePassword   Boolean        @default(false)
+  refreshTokens        RefreshToken[]
+  attendances          Attendance[]
+  createdAt            DateTime       @default(now())
 
   @@index([employerId])
   @@index([role, status])

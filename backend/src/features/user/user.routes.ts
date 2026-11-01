@@ -47,7 +47,7 @@ const employerOnly = [authenticate, requireRole("EMPLOYER"), requireApproved] as
 
 userRouter.get("/me", authenticate, meHandler);
 userRouter.patch("/me", authenticate, employerWriteLimiter, validate(updateProfileSchema), updateProfileHandler);
-userRouter.patch("/me/password", authenticate, employerWriteLimiter, validate(changePasswordSchema), changePasswordHandler);
+userRouter.patch("/me/password", authenticate, authLimiter, validate(changePasswordSchema), changePasswordHandler);
 
 userRouter.post("/employees", ...employerOnly, employerWriteLimiter, validate(createEmployeeSchema), createEmployeeHandler);
 userRouter.get("/employees", ...employerOnly, listEmployeesHandler);

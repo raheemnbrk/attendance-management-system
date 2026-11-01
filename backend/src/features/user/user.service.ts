@@ -108,6 +108,7 @@ export async function login(input: LoginInput) {
 
   return {
     ...tokens,
+    role: user.role,
     user: toPublicUser(user),
   };
 }
@@ -212,7 +213,10 @@ export async function updateProfile(user: AuthUser, input: UpdateProfileInput): 
   return toPublicUser(updated);
 }
 
-export async function changePassword(user: AuthUser, input: ChangePasswordInput): Promise<{ id: string }> {
+export async function changePassword(
+  user: AuthUser,
+  input: ChangePasswordInput,
+): Promise<{ accessToken: string; refreshToken: string }> {
   const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
 
   if (!dbUser) {
@@ -222,21 +226,25 @@ export async function changePassword(user: AuthUser, input: ChangePasswordInput)
   const currentPasswordMatches = await comparePassword(input.currentPassword, dbUser.passwordHash);
 
   if (!currentPasswordMatches) {
-    throw new AppError(400, "Current password is incorrect");
+    throw new AppError(401, "Current password is incorrect");
   }
 
   const passwordHash = await hashPassword(input.newPassword);
 
-  await prisma.$transaction(async (tx) => {
-    await tx.user.update({ where: { id: dbUser.id }, data: { passwordHash } });
+  const tokens = await prisma.$transaction(async (tx) => {
+    await tx.user.update({
+      where: { id: dbUser.id },
+      data: { passwordHash, mustChangePassword: false },
+    });
     // All sessions are revoked so the user must sign in again everywhere.
     await tx.refreshToken.updateMany({
       where: { userId: dbUser.id, revokedAt: null },
       data: { revokedAt: new Date() },
     });
+    return issueTokenPair(dbUser, tx);
   });
 
-  return { id: dbUser.id };
+  return tokens;
 }
 
 export async function createEmployee(employerId: string, input: CreateEmployeeInput) {
@@ -261,6 +269,7 @@ export async function createEmployee(employerId: string, input: CreateEmployeeIn
       role,
       status,
       employerId,
+      mustChangePassword: true,
     },
   });
 
@@ -354,7 +363,15 @@ export async function resetEmployeePassword(
   const temporaryPassword = input.password ?? generateRandomPassword();
   const passwordHash = await hashPassword(temporaryPassword);
 
-  await prisma.user.update({ where: { id }, data: { passwordHash } });
+  await prisma.$transaction(async (tx) => {
+    // The employee must set a personal password on their next sign in.
+    await tx.user.update({ where: { id }, data: { passwordHash, mustChangePassword: true } });
+    // Old sessions no longer trust the temporary password.
+    await tx.refreshToken.updateMany({
+      where: { userId: id, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+  });
 
   return input.password ? {} : { temporaryPassword };
 }
