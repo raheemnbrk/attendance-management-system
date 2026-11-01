@@ -521,3 +521,84 @@ export async function getTrend(employerId: string, days: number): Promise<TrendD
 
   return trend;
 }
+
+// ---------------------------------------------------------------------------
+// Own summaries (employee only)
+// ---------------------------------------------------------------------------
+
+export type EmployeeMonthlySummary = {
+  month: string;
+  daysPresent: number;
+  totalMinutes: number;
+  averageMinutesPerDay: number;
+  forgottenCheckOuts: number;
+};
+
+// Same counting rules as the employer monthly report, scoped to one user:
+// weekend days never count as presence, minutes come only from records with a
+// check-out, and a past record without check-out counts as forgotten.
+export async function getMyMonthlySummary(
+  employeeId: string,
+  month?: string,
+): Promise<EmployeeMonthlySummary> {
+  const today = todayISO();
+  const resolvedMonth = month ?? today.slice(0, 7);
+  const monthStart = `${resolvedMonth}-01`;
+  const monthEnd = monthLastDay(resolvedMonth);
+  // Working days only up to today so future days do not count at all.
+  const rangeEnd = monthEnd < today ? monthEnd : today;
+  const workingDays = monthStart <= rangeEnd ? listWorkingDays(monthStart, rangeEnd) : [];
+
+  const records = await prisma.attendance.findMany({
+    where: {
+      userId: employeeId,
+      date: { gte: isoToUtcMidnight(monthStart), lte: isoToUtcMidnight(monthEnd) },
+    },
+  });
+
+  const totals = computeAttendanceTotals(records, new Set(workingDays), today);
+
+  return {
+    month: resolvedMonth,
+    daysPresent: totals.daysPresent,
+    totalMinutes: totals.totalMinutes,
+    averageMinutesPerDay: totals.daysPresent
+      ? Math.round(totals.totalMinutes / totals.daysPresent)
+      : 0,
+    forgottenCheckOuts: totals.forgottenCheckOuts,
+  };
+}
+
+export type EmployeeWeeklySummary = {
+  from: string;
+  to: string;
+  daysPresent: number;
+  totalMinutes: number;
+};
+
+// Week containing today, starting on Sunday (weekend days are excluded from
+// presence, matching the monthly rule).
+export async function getMyWeekSummary(employeeId: string): Promise<EmployeeWeeklySummary> {
+  const today = todayISO();
+  // getUTCDay: 0 = Sunday ... 6 = Saturday, so shifting back by it lands on
+  // this week's Sunday (a calendar date's weekday is timezone-independent).
+  const from = isoAddDays(today, -isoToUtcMidnight(today).getUTCDay());
+  const to = isoAddDays(from, 6);
+  const workingDays = listWorkingDays(from, today);
+
+  const records = await prisma.attendance.findMany({
+    where: {
+      userId: employeeId,
+      date: { gte: isoToUtcMidnight(from), lte: isoToUtcMidnight(to) },
+    },
+  });
+
+  const totals = computeAttendanceTotals(records, new Set(workingDays), today);
+
+  return {
+    from,
+    to,
+    daysPresent: totals.daysPresent,
+    totalMinutes: totals.totalMinutes,
+  };
+}

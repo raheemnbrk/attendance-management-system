@@ -12,6 +12,8 @@ import {
   monthlyReportExportHandler,
   monthlyReportHandler,
   myHistoryHandler,
+  myMonthlySummaryHandler,
+  myWeekSummaryHandler,
   summaryHandler,
   todayHandler,
   trendHandler,
@@ -27,6 +29,8 @@ attendanceRouter.post("/check-in", ...employeeOnly, attendanceLimiter, validate(
 attendanceRouter.post("/check-out", ...employeeOnly, attendanceLimiter, checkOutHandler);
 attendanceRouter.get("/today", ...employeeOnly, todayHandler);
 attendanceRouter.get("/me", ...employeeOnly, myHistoryHandler);
+attendanceRouter.get("/me/summary", ...employeeOnly, myMonthlySummaryHandler);
+attendanceRouter.get("/me/week", ...employeeOnly, myWeekSummaryHandler);
 
 attendanceRouter.get("/employees", ...employerOnly, employeeListHandler);
 attendanceRouter.get("/employees/:employeeId", ...employerOnly, employeeHistoryHandler);

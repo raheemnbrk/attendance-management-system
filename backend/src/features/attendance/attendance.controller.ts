@@ -9,6 +9,8 @@ import {
   getEmployeeReport,
   getEmployerEmployeeAttendance,
   getMonthlyReport,
+  getMyMonthlySummary,
+  getMyWeekSummary,
   getToday,
   getTrend,
   listEmployerAttendance,
@@ -21,6 +23,7 @@ import {
   historyQuerySchema,
   monthlyReportExportQuerySchema,
   monthlyReportQuerySchema,
+  mySummaryQuerySchema,
   summaryQuerySchema,
   trendQuerySchema,
 } from "./attendance.schema";
@@ -46,6 +49,17 @@ export const todayHandler = asyncHandler(async (req: Request, res: Response) => 
 export const myHistoryHandler = asyncHandler(async (req: Request, res: Response) => {
   const query = historyQuerySchema.parse(req.query);
   const result = await listMyAttendance(req.user!.id, query);
+  res.status(200).json({ success: true, data: result });
+});
+
+export const myMonthlySummaryHandler = asyncHandler(async (req: Request, res: Response) => {
+  const query = mySummaryQuerySchema.parse(req.query);
+  const result = await getMyMonthlySummary(req.user!.id, query.month);
+  res.status(200).json({ success: true, data: result });
+});
+
+export const myWeekSummaryHandler = asyncHandler(async (req: Request, res: Response) => {
+  const result = await getMyWeekSummary(req.user!.id);
   res.status(200).json({ success: true, data: result });
 });
 

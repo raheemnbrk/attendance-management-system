@@ -78,6 +78,11 @@ export const monthSchema = z
     return month >= 1 && month <= 12;
   }, { message: "Month must be a valid calendar month" });
 
+// Own monthly summary: month defaults to the current one.
+export const mySummaryQuerySchema = z.object({
+  month: monthSchema.optional(),
+});
+
 export const monthlyReportQuerySchema = z.object({
   month: monthSchema,
 });
@@ -128,6 +133,7 @@ export type HistoryQuery = z.infer<typeof historyQuerySchema>;
 export type EmployeeListQuery = z.infer<typeof employeeListQuerySchema>;
 export type EmployeeHistoryQuery = z.infer<typeof historyQuerySchema>;
 export type SummaryQuery = z.infer<typeof summaryQuerySchema>;
+export type MySummaryQuery = z.infer<typeof mySummaryQuerySchema>;
 export type MonthlyReportQuery = z.infer<typeof monthlyReportQuerySchema>;
 export type EmployeeReportQuery = z.infer<typeof employeeReportQuerySchema>;
 export type TrendQuery = z.infer<typeof trendQuerySchema>;
