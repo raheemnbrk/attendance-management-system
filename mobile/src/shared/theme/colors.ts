@@ -111,3 +111,15 @@ export const hitSlop = {
   bottom: 8,
   left: 8,
 } as const;
+
+/** Fixed brand colors for the welcome/onboarding surface. The deep teal keeps
+ * its identity in both themes instead of following the scheme's primary. */
+export const brand = {
+  teal: "#0F766E",
+  tealDeep: "#115E59",
+  tealDark: "#134E4A",
+  onTeal: "#FFFFFF",
+  onTealMuted: "rgba(255, 255, 255, 0.78)",
+  onTealFaint: "rgba(255, 255, 255, 0.16)",
+} as const;
+
