@@ -1,0 +1,46 @@
+import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
+import { radius, spacing } from "@/shared/theme/colors";
+import { useTheme } from "@/shared/theme/theme-provider";
+
+export type CardProps = {
+  children: React.ReactNode;
+  style?: StyleProp<ViewStyle>;
+  padding?: number | "none";
+};
+
+export function Card({ children, style, padding = spacing.lg }: CardProps) {
+  const { colors, isDark } = useTheme();
+
+  return (
+    <View
+      style={[
+        styles.card,
+        {
+          backgroundColor: colors.card,
+          borderColor: colors.border,
+          padding: padding === "none" ? 0 : padding,
+        },
+        !isDark && styles.shadow,
+        style,
+      ]}
+    >
+      {children}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  card: {
+    borderRadius: radius.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: "hidden",
+  },
+  shadow: {
+    borderWidth: 0,
+    elevation: 2,
+    shadowColor: "#0F172A",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+  },
+});
