@@ -29,21 +29,23 @@ import {
 } from "./attendance.schema";
 import type { CheckInInput } from "./attendance.schema";
 
+// The mobile app must never trust the phone clock, so attendance responses
+// carry the server timestamp alongside the usual { success, data } body.
 export const checkInHandler = asyncHandler(
   async (req: Request<ParamsDictionary, unknown, CheckInInput>, res: Response) => {
     const result = await checkIn(req.user!.id, req.body);
-    res.status(201).json({ success: true, data: result });
+    res.status(201).json({ success: true, data: result, serverTime: new Date().toISOString() });
   },
 );
 
 export const checkOutHandler = asyncHandler(async (req: Request, res: Response) => {
   const result = await checkOut(req.user!.id);
-  res.status(200).json({ success: true, data: result });
+  res.status(200).json({ success: true, data: result, serverTime: new Date().toISOString() });
 });
 
 export const todayHandler = asyncHandler(async (req: Request, res: Response) => {
   const result = await getToday(req.user!.id);
-  res.status(200).json({ success: true, data: result });
+  res.status(200).json({ success: true, data: result, serverTime: new Date().toISOString() });
 });
 
 export const myHistoryHandler = asyncHandler(async (req: Request, res: Response) => {
