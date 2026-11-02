@@ -1,4 +1,7 @@
-import { ApiError } from "@/shared/api/errors";
+import {
+  ApiError,
+  TIMEOUT_ERROR_MESSAGE,
+} from "@/shared/api/errors";
 import { env } from "@/shared/lib/env";
 import {
   clearTokens,
@@ -8,7 +11,8 @@ import {
 } from "@/shared/lib/token-storage";
 import type { ApiEnvelope, ApiSuccess, AuthTokens } from "@/shared/types";
 
-const REQUEST_TIMEOUT_MS = 15_000;
+export const DEFAULT_REQUEST_TIMEOUT_MS = 15_000;
+export const LOGIN_REQUEST_TIMEOUT_MS = 60_000;
 
 type HttpMethod = "GET" | "POST" | "PATCH" | "DELETE";
 
@@ -19,8 +23,10 @@ export type RequestConfig = {
   method?: HttpMethod;
   body?: unknown;
   query?: Record<string, QueryValue>;
-  /** Requests that must not send (or refresh) the bearer token. */
-  auth?: boolean /** defaults to true */;
+  /** Requests that must not send (or refresh) the bearer token; defaults to true. */
+  auth?: boolean;
+  /** Overrides the default request timeout, e.g. login waits 60s for cold starts. */
+  timeoutMs?: number;
 };
 
 type AuthEventHandler = {
@@ -56,9 +62,9 @@ function buildUrl(path: string, query?: Record<string, QueryValue>): string {
   return qs ? `${url}?${qs}` : url;
 }
 
-class TimeoutError extends Error {
+export class TimeoutError extends Error {
   constructor() {
-    super("Request timed out");
+    super(TIMEOUT_ERROR_MESSAGE);
     this.name = "TimeoutError";
   }
 }
@@ -68,9 +74,28 @@ async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs: numbe
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     return await fetch(url, { ...init, signal: controller.signal });
+  } catch (error) {
+    // On React Native the abort of an in-flight request can surface as
+    // TypeError("Network request failed") instead of AbortError, so the
+    // aborted signal itself is the single source of truth for a timeout.
+    if (controller.signal.aborted) {
+      throw new TimeoutError();
+    }
+    throw error;
   } finally {
     clearTimeout(timer);
   }
+}
+
+/** __DEV__-only diagnostics for failed requests. Logs the exact URL, method and
+ * the caught error's name/message. Never logs headers, tokens or bodies. */
+function logFailedRequest(url: string, method: string, error: unknown): void {
+  if (!__DEV__) {
+    return;
+  }
+  const name = error instanceof Error ? error.name : typeof error;
+  const message = error instanceof Error ? error.message : String(error);
+  console.log(`[api] ${method} ${url} failed → ${name}: ${message}`);
 }
 
 async function parseJson(response: Response): Promise<ApiEnvelope<unknown> | null> {
@@ -110,7 +135,7 @@ async function performRefresh(): Promise<AuthTokens | null> {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ refreshToken }),
       },
-      REQUEST_TIMEOUT_MS,
+      DEFAULT_REQUEST_TIMEOUT_MS,
     );
 
     if (!response.ok) {
@@ -151,7 +176,9 @@ export async function apiRequest<TData>(config: RequestConfig): Promise<ApiSucce
   const method = config.method ?? "GET";
   const endpoint = buildUrl(config.path, config.query);
   const shouldAuth = config.auth !== false;
-  let attempt = 0;
+  const timeoutMs = config.timeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS;
+  let reauthenticated = false;
+  let retriedNetwork = false;
 
   for (;;) {
     const headers: Record<string, string> = {
@@ -172,23 +199,29 @@ export async function apiRequest<TData>(config: RequestConfig): Promise<ApiSucce
           headers,
           body: config.body === undefined ? undefined : JSON.stringify(config.body),
         },
-        REQUEST_TIMEOUT_MS,
+        timeoutMs,
       );
     } catch (error) {
-      if (error instanceof Error && error.name === "AbortError") {
-        throw new ApiError("The connection timed out. Please check your network and try again.");
+      logFailedRequest(endpoint, method, error);
+      if (error instanceof TimeoutError) {
+        throw new ApiError(TIMEOUT_ERROR_MESSAGE);
       }
-      // Network failures surface as TypeError in React Native.
-      throw error instanceof Error ? error : ApiErrorNetwork();
-    }
-
-    if (response.status === 401 && shouldAuth && attempt === 0) {
-      const fresh = await handleExpiredSession();
-      if (fresh) {
-        attempt += 1;
+      if (method === "GET" && !retriedNetwork && error instanceof TypeError) {
+        retriedNetwork = true;
         continue;
       }
-      throw new ApiError("Your session has expired. Please sign in again.", 401);
+      throw error instanceof Error ? error : new ApiError("Something went wrong. Please try again.");
+    }
+
+    if (response.status === 401 && shouldAuth && !reauthenticated) {
+      const fresh = await handleExpiredSession();
+      if (fresh) {
+        reauthenticated = true;
+        continue;
+      }
+      const sessionError = new ApiError("Your session has expired. Please sign in again.", 401);
+      logFailedRequest(endpoint, method, sessionError);
+      throw sessionError;
     }
 
     if (!response.ok) {
@@ -196,25 +229,25 @@ export async function apiRequest<TData>(config: RequestConfig): Promise<ApiSucce
       const message = envelope && !envelope.success && envelope.message
         ? envelope.message
         : "Something went wrong. Please try again.";
-      throw new ApiError(message, response.status);
+      const apiError = new ApiError(message, response.status);
+      logFailedRequest(endpoint, method, apiError);
+      throw apiError;
     }
 
     const envelope = (await parseJson(response)) as ApiEnvelope<TData> | null;
     if (!envelope || !envelope.success) {
-      throw new ApiError(
+      const apiError = new ApiError(
         envelope && "message" in envelope && envelope.message
           ? envelope.message
           : "Unexpected server response.",
         response.status,
       );
+      logFailedRequest(endpoint, method, apiError);
+      throw apiError;
     }
 
     return envelope;
   }
-}
-
-function ApiErrorNetwork(): ApiError {
-  return new ApiError("No connection. Check your internet and try again.");
 }
 
 export function apiGet<TData>(path: string, query?: Record<string, QueryValue>): Promise<ApiSuccess<TData>> {

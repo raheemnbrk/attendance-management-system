@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { KeyboardAvoidingView, Platform, StyleSheet, Text, View } from "react-native";
 import { LoginForm } from "@/features/auth/components/LoginForm";
 import { Screen } from "@/shared/components/layout/Screen";
+import { env } from "@/shared/lib/env";
 import { fontSize, radius, spacing } from "@/shared/theme/colors";
 import { useTheme } from "@/shared/theme/theme-provider";
 
@@ -23,6 +24,11 @@ export default function LoginRoute() {
           <Text style={[styles.brandName, { color: colors.foreground }]}>Punchin</Text>
         </View>
         <LoginForm />
+        {__DEV__ ? (
+          <Text style={[styles.devApi, { color: colors.mutedForeground }]}>
+            API: {env.apiBaseUrl}
+          </Text>
+        ) : null}
       </KeyboardAvoidingView>
     </Screen>
   );
@@ -57,5 +63,11 @@ const styles = StyleSheet.create({
     fontSize: fontSize.lg,
     fontWeight: "800",
     letterSpacing: 0.2,
+  },
+  devApi: {
+    fontSize: fontSize.xs,
+    textAlign: "center",
+    marginTop: spacing.md,
+    marginBottom: spacing.xs,
   },
 });

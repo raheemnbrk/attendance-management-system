@@ -1,4 +1,4 @@
-import { apiPatch, apiPost, apiRequest } from "@/shared/api/client";
+import { apiPatch, apiRequest, LOGIN_REQUEST_TIMEOUT_MS } from "@/shared/api/client";
 import type { AppUser, Role } from "@/shared/types";
 import type { ChangePasswordValues, LoginValues } from "./schema";
 
@@ -15,7 +15,12 @@ export type PasswordRotationResponse = {
 };
 
 export function loginRequest(values: LoginValues): Promise<{ data: LoginResponse }> {
-  return apiPost<LoginResponse>("/users/login", values);
+  return apiRequest<LoginResponse>({
+    path: "/users/login",
+    method: "POST",
+    body: values,
+    timeoutMs: LOGIN_REQUEST_TIMEOUT_MS,
+  });
 }
 
 export function changePasswordRequest(

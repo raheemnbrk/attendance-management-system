@@ -8,10 +8,24 @@ export class ApiError extends Error {
   }
 }
 
-const networkErrorMessage = "No connection. Check your internet and try again.";
-const timeoutMessage = "The connection timed out. Please try again.";
+export const NETWORK_ERROR_MESSAGE = "No connection. Check your internet and try again.";
 
-/** Turns any thrown value into a short, human-friendly message for the UI. */
+export const TIMEOUT_ERROR_MESSAGE =
+  "The server is taking too long to respond. It may be waking up, please try again.";
+
+export function isTimeoutError(error: unknown): boolean {
+  return error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError");
+}
+
+/** React Native reports network failures (including aborted in-flight
+ * requests) by rejecting fetch with a TypeError. */
+export function isNetworkError(error: unknown): boolean {
+  return error instanceof TypeError;
+}
+
+/** Turns any thrown value into a short, human-friendly message for the UI.
+ * Only genuine network failures and aborted timeouts get a canned message;
+ * everything else keeps its real message. */
 export function toFriendlyMessage(error: unknown): string {
   if (error instanceof ApiError) {
     if (error.status === 429) {
@@ -21,16 +35,16 @@ export function toFriendlyMessage(error: unknown): string {
   }
 
   if (error instanceof Error) {
-    if (error.name === "AbortError" || error.name === "TimeoutError") {
-      return timeoutMessage;
+    if (isTimeoutError(error)) {
+      return TIMEOUT_ERROR_MESSAGE;
     }
-    if (typeof error.message === "string" && /network|fetch|connect/i.test(error.message)) {
-      return networkErrorMessage;
+    if (isNetworkError(error)) {
+      return NETWORK_ERROR_MESSAGE;
     }
-    return networkErrorMessage;
+    return error.message;
   }
 
-  return networkErrorMessage;
+  return "Something went wrong. Please try again.";
 }
 
 /** True when the friendly mapping should be a warning-style notice. */
@@ -38,5 +52,5 @@ export function isRetryableStatus(error: unknown): boolean {
   if (error instanceof ApiError) {
     return error.status === undefined || error.status >= 500 || error.status === 429;
   }
-  return true;
+  return isTimeoutError(error) || isNetworkError(error);
 }

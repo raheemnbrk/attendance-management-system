@@ -24,7 +24,15 @@ const parsed = envSchema.safeParse({
 
 if (!parsed.success) {
   const issues = parsed.error.issues.map((issue) => issue.message).join("; ");
-  throw new Error(`Invalid environment configuration: ${issues}`);
+  const details = [
+    "EXPO_PUBLIC_API_URL is missing or invalid:",
+    `${issues}.`,
+    "Set it in mobile/.env, e.g. EXPO_PUBLIC_API_URL=https://your-backend.example.com/api,",
+    "then restart the dev server so the value is re-inlined (a Metro cache restart may be needed).",
+    "The app cannot make any API requests until this is fixed.",
+  ].join(" ");
+  console.error(`[env] ${details}`);
+  throw new Error(details);
 }
 
 const apiUrl = parsed.data.EXPO_PUBLIC_API_URL.replace(/\/+$/, "");
