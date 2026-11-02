@@ -1,9 +1,11 @@
 import type { NextFunction, Request, RequestHandler, Response } from "express";
 import type { Role } from "@prisma/client";
 import { prisma } from "../lib/prisma";
+import type { EmployerSummary } from "../types/auth";
 import { AppError } from "../utils/app-error";
 import { verifyAccessToken } from "../utils/jwt";
 import { asyncHandler } from "../utils/async-handler";
+
 
 export const authenticate = asyncHandler(async (req: Request, _res: Response, next: NextFunction) => {
   const authHeader = req.headers.authorization;
@@ -23,16 +25,28 @@ export const authenticate = asyncHandler(async (req: Request, _res: Response, ne
 
   const { passwordHash: _passwordHash, ...authUser } = user;
 
+  // Employees also need their employer's public summary in the session payload:
+  // an employer's name and company, never the full user row or credentials.
+  let employer: EmployerSummary | null = null;
+
   // An employee of a suspended employer is blocked too, even when their own
   // account is active. Independent employees (no employer) pass through.
   if (user.role === "EMPLOYEE" && user.employerId) {
-    const employer = await prisma.user.findUnique({
+    const employerUser = await prisma.user.findUnique({
       where: { id: user.employerId },
-      select: { isActive: true },
+      select: { id: true, name: true, company: true, isActive: true },
     });
 
-    if (employer && !employer.isActive) {
-      throw new AppError(403, "Your employer account is suspended");
+    if (employerUser) {
+      if (!employerUser.isActive) {
+        throw new AppError(403, "Your employer account is suspended");
+      }
+
+      employer = {
+        id: employerUser.id,
+        name: employerUser.name,
+        company: employerUser.company,
+      };
     }
   }
 
@@ -42,7 +56,7 @@ export const authenticate = asyncHandler(async (req: Request, _res: Response, ne
     throw new AppError(403, "Password change required");
   }
 
-  req.user = authUser;
+  req.user = { ...authUser, employer };
   next();
 });
 

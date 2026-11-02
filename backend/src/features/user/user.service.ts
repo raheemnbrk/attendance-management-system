@@ -1,6 +1,6 @@
 import type { AccountStatus, PrismaClient, Role, User } from "@prisma/client";
 import { prisma } from "../../shared/lib/prisma";
-import type { AuthUser } from "../../shared/types/auth";
+import type { AuthUser, EmployerSummary } from "../../shared/types/auth";
 import { AppError } from "../../shared/utils/app-error";
 import {
   REFRESH_TOKEN_TTL_MS,
@@ -27,13 +27,13 @@ import type {
   UpdateProfileInput,
 } from "./user.schema";
 
-export type PublicUser = Omit<User, "passwordHash">;
+export type PublicUser = Omit<User, "passwordHash"> & { employer: EmployerSummary | null };
 
 type TokenDb = Pick<PrismaClient, "refreshToken">;
 
-function toPublicUser(user: User): PublicUser {
+function toPublicUser(user: User, employer: EmployerSummary | null = null): PublicUser {
   const { passwordHash: _passwordHash, ...publicUser } = user;
-  return publicUser;
+  return { ...publicUser, employer };
 }
 
 async function issueTokenPair(user: Pick<User, "id" | "role">, db: TokenDb = prisma) {
@@ -78,7 +78,12 @@ async function assertEmployerNotSuspended(
 }
 
 export async function login(input: LoginInput) {
-  const user = await prisma.user.findUnique({ where: { email: input.email } });
+  const user = await prisma.user.findUnique({
+    where: { email: input.email },
+    include: {
+      employer: { select: { id: true, name: true, company: true, isActive: true } },
+    },
+  });
 
   if (!user) {
     throw new AppError(401, "Invalid email or password");
@@ -104,12 +109,18 @@ export async function login(input: LoginInput) {
 
   await assertEmployerNotSuspended(user);
 
+  // Only employees carry an employer; it must expose just id, name and company.
+  const employerSummary: EmployerSummary | null =
+    user.role === "EMPLOYEE" && user.employer
+      ? { id: user.employer.id, name: user.employer.name, company: user.employer.company }
+      : null;
+
   const tokens = await issueTokenPair(user);
 
   return {
     ...tokens,
     role: user.role,
-    user: toPublicUser(user),
+    user: toPublicUser(user, employerSummary),
   };
 }
 
@@ -295,7 +306,7 @@ export async function listEmployees(employerId: string, query: ListEmployeesQuer
     orderBy: { createdAt: "desc" },
   });
 
-  return employees.map(toPublicUser);
+  return employees.map((employee) => toPublicUser(employee));
 }
 
 export type EmployerDepartments = {
