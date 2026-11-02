@@ -3,6 +3,7 @@ import { useSession } from "./session-store";
 import {
   changePasswordRequest,
   loginRequest,
+  logoutDeviceRequest,
   type LoginResponse,
   type PasswordRotationResponse,
 } from "./api";
@@ -36,6 +37,24 @@ export function useChangePassword() {
       const { accessToken, refreshToken } = response.data;
       await updateTokens({ accessToken, refreshToken });
       return response.data;
+    },
+  });
+}
+
+/** Revokes the refresh token on the server (best effort), then clears the
+ * local session whatever the outcome. */
+export function useLogout() {
+  const { session, signOut } = useSession();
+
+  return useMutation<void, unknown, void>({
+    mutationFn: async () => {
+      try {
+        await logoutDeviceRequest(session?.tokens.refreshToken ?? null);
+      } catch {
+        // The token may already be revoked or the network down; the local
+        // session is cleared regardless.
+      }
+      await signOut();
     },
   });
 }
