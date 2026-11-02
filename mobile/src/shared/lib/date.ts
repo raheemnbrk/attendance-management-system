@@ -70,6 +70,11 @@ function isoDay(date: Date): string {
   return format(date, "yyyy-MM-dd");
 }
 
+/** Local calendar date in YYYY-MM-DD, matching the backend's date keys. */
+export function localIso(date: Date): string {
+  return isoDay(date);
+}
+
 /** First and last calendar day of the month in YYYY-MM-DD (local clock). */
 export function monthRange(monthDate: Date): { from: string; to: string } {
   return {
@@ -104,6 +109,20 @@ export function calendarWeeks(monthDate: Date): Date[][] {
     weeks.push(days.slice(index, index + 7));
   }
   return weeks;
+}
+
+/** Same calendar day, compared on the local clock. */
+export function isSameDayLocal(a: Date, b: Date): boolean {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
+}
+
+/** Same calendar month, compared on the local clock. */
+export function isSameMonthLocal(a: Date, b: Date): boolean {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth();
 }
 
 /** Week header starting on Sunday, as in the calendar grid. */
