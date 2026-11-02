@@ -6,13 +6,15 @@ export type CardProps = {
   children: React.ReactNode;
   style?: StyleProp<ViewStyle>;
   padding?: number | "none";
+  accessibilityLabel?: string;
 };
 
-export function Card({ children, style, padding = spacing.lg }: CardProps) {
+export function Card({ children, style, padding = spacing.lg, accessibilityLabel }: CardProps) {
   const { colors, isDark } = useTheme();
 
   return (
     <View
+      accessibilityLabel={accessibilityLabel}
       style={[
         styles.card,
         {
