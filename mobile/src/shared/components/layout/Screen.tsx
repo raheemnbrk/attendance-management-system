@@ -25,6 +25,8 @@ export type ScreenProps = {
   contentStyle?: StyleProp<ViewStyle>;
 };
 
+/** Applies the top safe-area inset so screen headers (titles, buttons) are
+ * never clipped under the status bar / notch. */
 export function Screen({
   children,
   scroll = false,
@@ -92,6 +94,8 @@ export function Screen({
         styles.screen,
         {
           backgroundColor: colors.background,
+          // Never clip the header: honor the real notch / status-bar inset.
+          paddingTop: insets.top,
           paddingBottom: bottomSafe ? insets.bottom : 0,
         },
       ]}
@@ -114,7 +118,7 @@ export function Screen({
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    paddingTop: 8,
+    // paddingTop comes from the top safe-area inset at render time.
   },
   inner: {
     flex: 1,

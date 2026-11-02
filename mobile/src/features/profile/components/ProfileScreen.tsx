@@ -1,13 +1,16 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import { Alert, StyleSheet, Text, View } from "react-native";
+import Constants from "expo-constants";
 import { Card } from "@/shared/components/ui/Card";
 import { ListItem } from "@/shared/components/ui/ListItem";
+import { SegmentedControl } from "@/shared/components/ui/SegmentedControl";
 import { Header } from "@/shared/components/layout/Header";
 import { Screen } from "@/shared/components/layout/Screen";
 import { fontSize, radius, spacing } from "@/shared/theme/colors";
 import { useTheme } from "@/shared/theme/theme-provider";
 import { themeSchemeValues } from "@/features/profile/schema";
 import type { AppUser } from "@/shared/types";
+import type { SegmentedOption } from "@/shared/components/ui/SegmentedControl";
 
 export type ProfileScreenProps = {
   user: AppUser | null;
@@ -15,6 +18,34 @@ export type ProfileScreenProps = {
   onLogout?: () => void;
   loggingOut?: boolean;
 };
+
+type ThemeOption = SegmentedOption<(typeof themeSchemeValues)[number]> & {
+  icon: keyof typeof Ionicons.glyphMap;
+  activeIcon: keyof typeof Ionicons.glyphMap;
+};
+
+const APP_VERSION = Constants.expoConfig?.version ?? "1.0.0";
+
+const THEME_OPTIONS: ThemeOption[] = [
+  {
+    value: "light",
+    label: "Light",
+    icon: "sunny-outline",
+    activeIcon: "sunny",
+  },
+  {
+    value: "dark",
+    label: "Dark",
+    icon: "moon-outline",
+    activeIcon: "moon",
+  },
+  {
+    value: "system",
+    label: "System",
+    icon: "phone-portrait-outline",
+    activeIcon: "phone-portrait",
+  },
+];
 
 function initials(name: string | null): string {
   const trimmed = (name ?? "").trim();
@@ -24,6 +55,16 @@ function initials(name: string | null): string {
     .slice(0, 2)
     .map((part) => part.charAt(0).toUpperCase());
   return letters.join("") || "?";
+}
+
+/** Company if present, otherwise the employer name, otherwise a fallback. */
+function employerLabel(user: AppUser | null): string {
+  const employer = user?.employer ?? null;
+  const company = employer?.company?.trim();
+  if (company) return company;
+  const name = employer?.name.trim();
+  if (name) return name;
+  return "Not assigned";
 }
 
 export function ProfileScreen({
@@ -50,21 +91,10 @@ export function ProfileScreen({
 
   return (
     <Screen scroll padded>
-      <Header
-        title="Profile"
-        right={
-          <Ionicons
-            name="settings-outline"
-            size={22}
-            color={colors.foreground}
-            accessibilityElementsHidden
-            importantForAccessibility="no-hide-descendants"
-          />
-        }
-      />
+      <Header title="Profile" />
 
       {/* Identity card */}
-      <Card style={styles.identity}>
+      <Card style={styles.identity} padding={spacing.xl}>
         <View
           style={[styles.avatar, { backgroundColor: colors.primary }]}
           accessibilityLabel={`Signed in as ${user?.name ?? "unknown"}`}
@@ -83,7 +113,8 @@ export function ProfileScreen({
         </View>
       </Card>
 
-      {/* Department and employer tiles */}
+      {/* Department and employer tiles: equal width and height, values on one
+      line with ellipsis so long names cannot break the layout */}
       <View style={styles.tilesRow}>
         <Tile
           icon="briefcase-outline"
@@ -93,47 +124,19 @@ export function ProfileScreen({
         <Tile
           icon="business-outline"
           label="Employer"
-          value={user?.company ?? "—"}
+          value={employerLabel(user)}
         />
       </View>
 
       {/* Theme selector */}
-      <Card>
+      <Card padding={spacing.xl} style={styles.themeCard}>
         <Text style={[styles.sectionTitle, { color: colors.foreground }]}>App theme</Text>
-        <View
-          style={[styles.themeRow, { backgroundColor: colors.muted }]}
-          accessibilityRole="radiogroup"
+        <SegmentedControl
+          options={THEME_OPTIONS}
+          value={scheme}
+          onChange={setScheme}
           accessibilityLabel="App theme"
-        >
-          {themeSchemeValues.map((option) => {
-            const active = scheme === option;
-            const label =
-              option === ("light" as const)
-                ? "Light"
-                : option === ("dark" as const)
-                  ? "Dark"
-                  : "System";
-            return (
-              <Pressable
-                key={option}
-                onPress={() => setScheme(option)}
-                accessibilityRole="radio"
-                accessibilityState={{ checked: active }}
-                accessibilityLabel={`${label} theme`}
-                style={[styles.themeOption, active && { backgroundColor: colors.primary }]}
-              >
-                <Text
-                  style={[
-                    styles.themeOptionLabel,
-                    { color: active ? colors.primaryForeground : colors.mutedForeground },
-                  ]}
-                >
-                  {label}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
+        />
       </Card>
 
       {/* Preferences and session rows */}
@@ -143,6 +146,7 @@ export function ProfileScreen({
           title="Change password"
           subtitle="Update your sign-in password"
           onPress={onPressChangePassword}
+          chevron
           accessibilityLabel="Change password"
           style={styles.row}
         />
@@ -162,6 +166,10 @@ export function ProfileScreen({
           Signing out…
         </Text>
       ) : null}
+
+      <Text style={[styles.version, { color: colors.mutedForeground }]}>
+        Punchin v{APP_VERSION}
+      </Text>
     </Screen>
   );
 }
@@ -169,10 +177,16 @@ export function ProfileScreen({
 function Tile({ icon, label, value }: { icon: keyof typeof Ionicons.glyphMap; label: string; value: string }) {
   const { colors } = useTheme();
   return (
-    <Card style={styles.tile}>
+    <Card style={styles.tile} padding={spacing.xl}>
       <Ionicons name={icon} size={18} color={colors.primary} />
-      <Text style={[styles.tileLabel, { color: colors.mutedForeground }]}>{label}</Text>
-      <Text style={[styles.tileValue, { color: colors.foreground }]} numberOfLines={1}>
+      <Text style={[styles.tileLabel, { color: colors.mutedForeground }]} numberOfLines={1}>
+        {label}
+      </Text>
+      <Text
+        style={[styles.tileValue, { color: colors.foreground }]}
+        numberOfLines={1}
+        ellipsizeMode="tail"
+      >
         {value}
       </Text>
     </Card>
@@ -209,12 +223,12 @@ const styles = StyleSheet.create({
   },
   tilesRow: {
     flexDirection: "row",
-    gap: spacing.sm,
+    gap: spacing.lg,
+    marginTop: spacing.lg,
   },
   tile: {
     flex: 1,
     gap: 2,
-    padding: spacing.md,
   },
   tileLabel: {
     fontSize: fontSize.xs,
@@ -229,35 +243,27 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     marginBottom: spacing.sm,
   },
-  themeRow: {
-    borderRadius: radius.full,
-    flexDirection: "row",
-    gap: 4,
-    padding: 4,
+  themeCard: {
+    marginTop: spacing.lg,
   },
-  themeOption: {
-    alignItems: "center",
-    borderRadius: radius.full,
-    flex: 1,
-    height: 40,
-    justifyContent: "center",
-  },
-  themeOptionLabel: {
-    fontSize: fontSize.sm,
-    fontWeight: "600",
+  rowsCard: {
+    marginTop: spacing.lg,
   },
   divider: {
     height: StyleSheet.hairlineWidth,
-    marginHorizontal: spacing.md,
-  },
-  rowsCard: {
-    marginTop: spacing.sm,
+    marginHorizontal: spacing.xl,
   },
   row: {
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.xl,
   },
   loggingOutNote: {
     fontSize: fontSize.xs,
+    marginTop: spacing.lg,
+    textAlign: "center",
+  },
+  version: {
+    fontSize: fontSize.xs,
+    marginTop: spacing.xxxl,
     textAlign: "center",
   },
 });

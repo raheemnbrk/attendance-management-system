@@ -48,9 +48,11 @@ const styles = StyleSheet.create({
   header: {
     alignItems: "center",
     flexDirection: "row",
+    // 16px of vertical padding keeps the title clear of the status bar even on
+    // notched devices, and 12px below separates it from the content.
     gap: spacing.md,
     paddingBottom: spacing.md,
-    paddingTop: spacing.sm,
+    paddingTop: spacing.lg,
     width: "100%",
   },
   iconButton: {
