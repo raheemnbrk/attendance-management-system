@@ -49,11 +49,11 @@ export function ExportMenu({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-36">
-        <DropdownMenuItem onClick={() => void handleExport("csv")}>
+        <DropdownMenuItem disabled={isExporting} onClick={() => void handleExport("csv")}>
           <FileText aria-hidden="true" />
           CSV
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => void handleExport("xlsx")}>
+        <DropdownMenuItem disabled={isExporting} onClick={() => void handleExport("xlsx")}>
           <FileSpreadsheet aria-hidden="true" />
           Excel
         </DropdownMenuItem>

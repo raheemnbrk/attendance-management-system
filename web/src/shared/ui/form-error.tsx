@@ -4,7 +4,7 @@ export function FormError({ message }: { message?: string | null }) {
   }
 
   return (
-    <p role="alert" className="text-sm text-destructive">
+    <p role="alert" className="text-sm text-status-red-fg">
       {message}
     </p>
   );

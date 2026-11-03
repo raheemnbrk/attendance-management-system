@@ -341,7 +341,7 @@ const activityMeta: Record<
 > = {
   EMPLOYER_REGISTERED: { label: "New registration", icon: <UserPlus />, iconClass: "text-info bg-info-soft" },
   EMPLOYER_APPROVED: { label: "Employer approved", icon: <UserCheck />, iconClass: "text-success bg-success-soft" },
-  EMPLOYER_REJECTED: { label: "Employer rejected", icon: <UserX />, iconClass: "text-destructive bg-destructive-soft" },
+  EMPLOYER_REJECTED: { label: "Employer rejected", icon: <UserX />, iconClass: "text-status-red-fg bg-status-red-bg" },
 };
 
 function ActivityFeed() {

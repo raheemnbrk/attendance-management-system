@@ -13,7 +13,7 @@ const alertVariants = cva(
         default: "border-border bg-card text-card-foreground",
         info: "border-info/40 bg-info-soft text-info-foreground",
         warning: "border-warning/40 bg-warning-soft text-warning-foreground",
-        destructive: "border-destructive/40 bg-destructive-soft text-destructive-foreground",
+        destructive: "border-status-red-border bg-status-red-bg text-status-red-fg",
       },
     },
     defaultVariants: {

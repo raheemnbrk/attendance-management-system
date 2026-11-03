@@ -18,6 +18,11 @@ export function Toaster(props: ToasterProps) {
           "--normal-border": "var(--border)",
         } as React.CSSProperties
       }
+      toastOptions={{
+        classNames: {
+          error: "border-status-red-border bg-status-red-bg text-status-red-fg",
+        },
+      }}
       {...props}
     />
   );
