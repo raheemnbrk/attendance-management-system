@@ -19,9 +19,17 @@
   --muted-foreground: #64748b;
   --accent: #f1f5f9;
   --accent-foreground: #0f172a;
-  --destructive: #dc2626;
+  --destructive: #d92d20;
   --destructive-foreground: #ffffff;
   --destructive-soft: #fee2e2;
+
+  --status-red-fg: #b42318;
+  --status-red-bg: #fee4e2;
+  --status-red-border: #fda29b;
+
+  --scrollbar-track: transparent;
+  --scrollbar-thumb: #b8c4c4;
+  --scrollbar-thumb-hover: #0f766e;
   --border: #e2e8f0;
   --input: #e2e8f0;
   --ring: #0f766e;
@@ -54,9 +62,17 @@
   --muted-foreground: #94a3b8;
   --accent: #1e293b;
   --accent-foreground: #f1f5f9;
-  --destructive: #f87171;
+  --destructive: #f04438;
   --destructive-foreground: #450a0a;
   --destructive-soft: #2b1512;
+
+  --status-red-fg: #fda29b;
+  --status-red-bg: rgba(240, 68, 56, 0.16);
+  --status-red-border: rgba(240, 68, 56, 0.35);
+
+  --scrollbar-track: transparent;
+  --scrollbar-thumb: #3a4a4a;
+  --scrollbar-thumb-hover: #2dd4bf;
   --border: #1f2937;
   --input: #1f2937;
   --ring: #2dd4bf;
@@ -92,6 +108,9 @@
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-destructive-soft: var(--destructive-soft);
+  --color-status-red-fg: var(--status-red-fg);
+  --color-status-red-bg: var(--status-red-bg);
+  --color-status-red-border: var(--status-red-border);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -122,6 +141,36 @@
   body {
     @apply bg-background text-foreground font-sans antialiased;
   }
+}
+
+/* Custom scrollbar matching the teal theme (variables above, light + dark).
+   Applies to the page and to inner scroll areas: tables, sidebars, dialogs. */
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+/* Chrome, Edge, Safari */
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover);
 }
 
 @keyframes office-bob {
