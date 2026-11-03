@@ -34,6 +34,12 @@
         }
       ],
       [
+        "expo-camera",
+        {
+          "cameraPermission": "Camera access is needed to scan the attendance QR code."
+        }
+      ],
+      [
         "expo-secure-store",
         {
           "configureAndroidBackup": true

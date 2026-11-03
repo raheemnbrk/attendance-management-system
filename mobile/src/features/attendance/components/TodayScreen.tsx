@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Alert, StyleSheet, Text, View } from "react-native";
+import { useRouter } from "expo-router";
+import { StyleSheet, Text, View } from "react-native";
 import { toFriendlyMessage } from "@/shared/api/errors";
 import { Alert as AlertBox } from "@/shared/components/ui/Alert";
 import { Card } from "@/shared/components/ui/Card";
@@ -17,12 +18,7 @@ import { CheckButton } from "./CheckButton";
 import { TimerRing } from "./TimerRing";
 import { TodayCard } from "./TodayCard";
 import { WeekSummary } from "./WeekSummary";
-import {
-  useCheckIn,
-  useCheckOut,
-  useTodayQuery,
-  useWeekSummaryQuery,
-} from "@/features/attendance/hooks";
+import { useTodayQuery, useWeekSummaryQuery } from "@/features/attendance/hooks";
 import type { TodayState } from "@/features/attendance/types";
 
 /** A typical workday drives the ring fill while the timer runs. */
@@ -48,11 +44,10 @@ function greeting(hour: number): string {
 
 export function TodayScreen({ user }: TodayScreenProps) {
   const { colors } = useTheme();
+  const router = useRouter();
   const tabBarPadding = useTabBarHeight();
   const today = useTodayQuery();
   const week = useWeekSummaryQuery();
-  const checkIn = useCheckIn();
-  const checkOut = useCheckOut();
 
   const now = useTick(today.data?.record?.checkOut ? 30_000 : 1_000);
 
@@ -62,7 +57,6 @@ export function TodayScreen({ user }: TodayScreenProps) {
   const state: TodayState =
     !record || today.isLoading ? (record ? "working" : "idle") : record.checkOut ? "done" : "working";
 
-  const busy = checkIn.isPending || checkOut.isPending;
   const firstName = (user?.name ?? "").trim().split(/\s+/)[0] ?? "";
 
   let ringLabel = formatTime12(new Date(correctedNow));
@@ -84,28 +78,12 @@ export function TodayScreen({ user }: TodayScreenProps) {
     ? record.workedMinutes ?? Math.max(0, Math.round((correctedNow - Date.parse(record.checkIn)) / 60_000))
     : null;
 
-  const showError = (title: string, error: unknown) => {
-    Alert.alert(title, toFriendlyMessage(error));
-  };
-
   const handleCheckIn = () => {
-    checkIn.mutate(undefined, {
-      onError: (error) => {
-        // 409 means the server disagrees with our local state; refresh and
-        // show what the API replied.
-        void today.refetch();
-        showError("Cannot check in", error);
-      },
-    });
+    router.push({ pathname: "/scan", params: { mode: "check-in" } });
   };
 
   const handleCheckOut = () => {
-    checkOut.mutate(undefined, {
-      onError: (error) => {
-        void today.refetch();
-        showError("Cannot check out", error);
-      },
-    });
+    router.push({ pathname: "/scan", params: { mode: "check-out" } });
   };
 
   if (today.isError) {
@@ -185,7 +163,6 @@ export function TodayScreen({ user }: TodayScreenProps) {
 
       <CheckButton
         state={state}
-        working={busy}
         onCheckIn={handleCheckIn}
         onCheckOut={handleCheckOut}
       />

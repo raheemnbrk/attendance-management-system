@@ -77,19 +77,19 @@ function invalidateAttendance(queryClient: ReturnType<typeof useQueryClient>): v
 }
 
 /** POST /attendance/check-in — refreshing all attendance data afterwards. */
-export function useCheckIn(): UseMutationResult<AttendanceRecord, unknown, void> {
+export function useCheckIn(): UseMutationResult<AttendanceRecord, unknown, string> {
   const queryClient = useQueryClient();
-  return useMutation<AttendanceRecord, unknown, void>({
-    mutationFn: async () => (await checkInRequest()).data,
+  return useMutation<AttendanceRecord, unknown, string>({
+    mutationFn: async (qrCode) => (await checkInRequest(qrCode)).data,
     onSuccess: () => invalidateAttendance(queryClient),
   });
 }
 
 /** POST /attendance/check-out — refreshing all attendance data afterwards. */
-export function useCheckOut(): UseMutationResult<AttendanceRecord, unknown, void> {
+export function useCheckOut(): UseMutationResult<AttendanceRecord, unknown, string> {
   const queryClient = useQueryClient();
-  return useMutation<AttendanceRecord, unknown, void>({
-    mutationFn: async () => (await checkOutRequest()).data,
+  return useMutation<AttendanceRecord, unknown, string>({
+    mutationFn: async (qrCode) => (await checkOutRequest(qrCode)).data,
     onSuccess: () => invalidateAttendance(queryClient),
   });
 }
