@@ -6,6 +6,7 @@ import { ListItem } from "@/shared/components/ui/ListItem";
 import { SegmentedControl } from "@/shared/components/ui/SegmentedControl";
 import { Header } from "@/shared/components/layout/Header";
 import { Screen } from "@/shared/components/layout/Screen";
+import { useTabBarHeight } from "@/shared/components/navigation/use-tab-bar-height";
 import { fontSize, radius, spacing } from "@/shared/theme/colors";
 import { useTheme } from "@/shared/theme/theme-provider";
 import { themeSchemeValues } from "@/features/profile/schema";
@@ -74,6 +75,7 @@ export function ProfileScreen({
   loggingOut = false,
 }: ProfileScreenProps) {
   const { colors, scheme, setScheme } = useTheme();
+  const tabBarPadding = useTabBarHeight();
 
   const confirmLogout = () => {
     Alert.alert("Log out", "Are you sure you want to sign out of Punchin?", [
@@ -90,7 +92,7 @@ export function ProfileScreen({
   };
 
   return (
-    <Screen scroll padded>
+    <Screen scroll padded contentStyle={{ paddingBottom: tabBarPadding }}>
       <Header title="Profile" />
 
       {/* Identity card */}

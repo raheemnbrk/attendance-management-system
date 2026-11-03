@@ -22,6 +22,10 @@ export type ThemeColors = {
   skeleton: string;
   overlay: string;
   shadow: string;
+  /** Liquid glass navigation tokens (per scheme). */
+  glassOverlay: string;
+  glassBorder: string;
+  glassHighlight: string;
 };
 
 export const lightColors: ThemeColors = {
@@ -46,6 +50,9 @@ export const lightColors: ThemeColors = {
   skeleton: "#E2E8F0",
   overlay: "rgba(15, 23, 42, 0.45)",
   shadow: "#0F172A",
+  glassOverlay: "rgba(255, 255, 255, 0.55)",
+  glassBorder: "rgba(255, 255, 255, 0.7)",
+  glassHighlight: "rgba(255, 255, 255, 0.25)",
 };
 
 export const darkColors: ThemeColors = {
@@ -70,6 +77,9 @@ export const darkColors: ThemeColors = {
   skeleton: "#1E293B",
   overlay: "rgba(0, 0, 0, 0.60)",
   shadow: "#000000",
+  glassOverlay: "rgba(17, 24, 39, 0.55)",
+  glassBorder: "rgba(255, 255, 255, 0.12)",
+  glassHighlight: "rgba(255, 255, 255, 0.10)",
 };
 
 export const palettes: Record<ColorSchemeName, ThemeColors> = {

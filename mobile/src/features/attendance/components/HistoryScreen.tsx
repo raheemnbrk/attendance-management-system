@@ -16,6 +16,7 @@ import { Card } from "@/shared/components/ui/Card";
 import { Skeleton } from "@/shared/components/ui/Skeleton";
 import { Header } from "@/shared/components/layout/Header";
 import { Screen } from "@/shared/components/layout/Screen";
+import { useTabBarHeight } from "@/shared/components/navigation/use-tab-bar-height";
 import {
   addMonths,
   formatListDay,
@@ -41,6 +42,7 @@ type ViewMode = "list" | "calendar";
 
 export function HistoryScreen() {
   const { colors } = useTheme();
+  const tabBarPadding = useTabBarHeight();
   const [monthDate, setMonthDate] = useState(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
@@ -181,7 +183,7 @@ export function HistoryScreen() {
           onEndReachedThreshold={0.4}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, { paddingBottom: tabBarPadding }]}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -225,7 +227,7 @@ export function HistoryScreen() {
           }
         />
       ) : (
-        <View style={styles.calendarStack}>
+        <View style={[styles.calendarStack, { paddingBottom: tabBarPadding }]}>
           {monthSelector}
           {modeToggle}
           {summaryBlock}

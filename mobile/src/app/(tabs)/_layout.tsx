@@ -1,6 +1,6 @@
-import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { fontSize } from "@/shared/theme/colors";
+import { Tabs } from "expo-router";
+import { GlassTabBar } from "@/shared/components/navigation/GlassTabBar";
 import { useTheme } from "@/shared/theme/theme-provider";
 
 export default function TabsLayout() {
@@ -10,17 +10,10 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.mutedForeground,
-        tabBarStyle: {
-          backgroundColor: colors.card,
-          borderTopColor: colors.border,
-        },
-        tabBarLabelStyle: {
-          fontSize: fontSize.xs,
-          fontWeight: "600",
-        },
+        // Typing (e.g. the change-password form) must not fight the tab bar.
+        tabBarHideOnKeyboard: true,
       }}
+      tabBar={(props) => <GlassTabBar {...props} />}
     >
       <Tabs.Screen
         name="index"

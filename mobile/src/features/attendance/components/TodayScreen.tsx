@@ -7,6 +7,7 @@ import { Skeleton } from "@/shared/components/ui/Skeleton";
 import { Button } from "@/shared/components/ui/Button";
 import { Header } from "@/shared/components/layout/Header";
 import { Screen } from "@/shared/components/layout/Screen";
+import { useTabBarHeight } from "@/shared/components/navigation/use-tab-bar-height";
 import { formatElapsedClock, formatHeaderDate, formatTime12, formatWorkedMinutes } from "@/shared/lib/date";
 import { fontSize, radius, spacing } from "@/shared/theme/colors";
 import { useTheme } from "@/shared/theme/theme-provider";
@@ -47,6 +48,7 @@ function greeting(hour: number): string {
 
 export function TodayScreen({ user }: TodayScreenProps) {
   const { colors } = useTheme();
+  const tabBarPadding = useTabBarHeight();
   const today = useTodayQuery();
   const week = useWeekSummaryQuery();
   const checkIn = useCheckIn();
@@ -147,7 +149,14 @@ export function TodayScreen({ user }: TodayScreenProps) {
   }
 
   return (
-    <Screen scroll padded refreshing={today.isRefetching} onRefresh={() => void today.refetch()}>
+    <Screen
+      scroll
+      padded
+      refreshing={today.isRefetching}
+      onRefresh={() => void today.refetch()}
+      // Content scrolls under the glass bar; keep the last card reachable.
+      contentStyle={{ paddingBottom: tabBarPadding }}
+    >
       <Header
         avatar={
           <View
