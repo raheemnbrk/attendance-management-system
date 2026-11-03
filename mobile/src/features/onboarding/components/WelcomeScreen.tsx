@@ -1,16 +1,14 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { fontSize, radius, spacing } from "@/shared/theme/colors";
 import { brand } from "@/shared/theme/colors";
 import { markWelcomeSeen } from "@/features/onboarding/storage";
 
 export function WelcomeScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
 
   const handleGetStarted = async () => {
     await markWelcomeSeen();
@@ -18,14 +16,15 @@ export function WelcomeScreen() {
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom + spacing.lg }]}>
+    <View style={styles.container}>
       <StatusBar style="light" />
       <LinearGradient
         colors={[brand.teal, brand.tealDeep, brand.tealDark]}
         style={StyleSheet.absoluteFill}
       />
 
-      <View style={styles.content} accessibilityRole="header">
+      <SafeAreaView style={styles.safe}>
+        <View style={styles.content} accessibilityRole="header">
         <View style={styles.logoRing} accessibilityLabel="Punchin logo">
           <Ionicons name="time-outline" size={30} color={brand.onTeal} />
           <View style={styles.fingerprintBadge}>
@@ -68,12 +67,16 @@ export function WelcomeScreen() {
           <Ionicons name="arrow-forward" size={18} color={brand.teal} />
         </Pressable>
       </View>
+      </SafeAreaView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+  },
+  safe: {
     flex: 1,
   },
   content: {
@@ -203,6 +206,7 @@ const styles = StyleSheet.create({
     right: 26,
   },
   footer: {
+    paddingBottom: spacing.lg,
     paddingHorizontal: spacing.xl,
   },
   button: {

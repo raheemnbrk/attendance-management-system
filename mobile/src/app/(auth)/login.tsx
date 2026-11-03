@@ -1,36 +1,51 @@
 import { Ionicons } from "@expo/vector-icons";
-import { KeyboardAvoidingView, Platform, StyleSheet, Text, View } from "react-native";
+import { StatusBar } from "expo-status-bar";
+import {
+  KeyboardAvoidingView,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { LoginForm } from "@/features/auth/components/LoginForm";
-import { Screen } from "@/shared/components/layout/Screen";
 import { env } from "@/shared/lib/env";
 import { fontSize, radius, spacing } from "@/shared/theme/colors";
 import { useTheme } from "@/shared/theme/theme-provider";
 
 export default function LoginRoute() {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
 
   return (
-    <Screen scroll keyboard padded>
+    <SafeAreaView style={styles.flex}>
+      <StatusBar style={isDark ? "light" : "dark"} />
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={styles.flex}
       >
-        <View style={styles.brand} accessibilityLabel="Punchin">
-          <View style={[styles.brandBadge, { backgroundColor: colors.primary }]}>
-            <View style={[styles.brandRing, { borderColor: colors.primaryForeground }]}>
-              <Ionicons name="finger-print" size={22} color={colors.primaryForeground} />
+        <ScrollView
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.brand} accessibilityLabel="Punchin">
+            <View style={[styles.brandBadge, { backgroundColor: colors.primary }]}>
+              <View style={[styles.brandRing, { borderColor: colors.primaryForeground }]}>
+                <Ionicons name="finger-print" size={22} color={colors.primaryForeground} />
+              </View>
             </View>
+            <Text style={[styles.brandName, { color: colors.foreground }]}>Punchin</Text>
           </View>
-          <Text style={[styles.brandName, { color: colors.foreground }]}>Punchin</Text>
-        </View>
-        <LoginForm />
-        {__DEV__ ? (
-          <Text style={[styles.devApi, { color: colors.mutedForeground }]}>
-            API: {env.apiBaseUrl}
-          </Text>
-        ) : null}
+          <LoginForm />
+          {__DEV__ ? (
+            <Text style={[styles.devApi, { color: colors.mutedForeground }]}>
+              API: {env.apiBaseUrl}
+            </Text>
+          ) : null}
+        </ScrollView>
       </KeyboardAvoidingView>
-    </Screen>
+    </SafeAreaView>
   );
 }
 
@@ -38,11 +53,15 @@ const styles = StyleSheet.create({
   flex: {
     flex: 1,
   },
+  content: {
+    flexGrow: 1,
+    justifyContent: "center",
+    padding: spacing.xxl,
+  },
   brand: {
     alignItems: "center",
     gap: spacing.sm,
     marginBottom: spacing.xxl,
-    marginTop: spacing.xxxl,
   },
   brandBadge: {
     alignItems: "center",
