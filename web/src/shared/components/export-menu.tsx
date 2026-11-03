@@ -3,7 +3,7 @@
 import { Download, FileSpreadsheet, FileText } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import type { ExportParams } from "@/shared/lib/download";
+import type { ExportEndpoint, ExportParams } from "@/shared/lib/download";
 import { downloadExport } from "@/shared/lib/download";
 import { Button } from "@/shared/ui/button";
 import {
@@ -14,14 +14,14 @@ import {
 } from "@/shared/ui/dropdown-menu";
 
 // Export menu (CSV / Excel) with a loading state on the trigger and a toast
-// on failure (including 429 rate-limit messages forwarded by the proxy).
+// on failure (including 429 rate-limit messages).
 export function ExportMenu({
   endpoint,
   params,
   disabled = false,
   label = "Export",
 }: {
-  endpoint: "export" | "reports/monthly/export";
+  endpoint: ExportEndpoint;
   params: ExportParams;
   disabled?: boolean;
   label?: string;

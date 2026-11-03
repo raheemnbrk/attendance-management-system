@@ -1,57 +1,62 @@
 "use client";
 
-import { env } from "@/shared/config/env";
-import { useAuthStore } from "@/features/auth/auth.store";
+import type { AxiosResponse } from "axios";
+import { api } from "@/shared/lib/api";
 import { ApiError } from "@/shared/types/api";
 
 export type ExportParams = Record<string, string | undefined>;
 
-// Downloads an attendance export through the Next.js proxy route handler
-// (app/api/export/route.ts), preserving the backend filename from
-// Content-Disposition and surfacing API errors (including 429 messages).
+// Backend endpooints (mounted under /api/attendance) as used by the shared
+// axios client, whose "/api" base URL is proxied to the backend by Next.
+export type ExportEndpoint = "attendance/export" | "attendance/reports/monthly/export";
+
+const FALLBACK_FILENAMES: Record<ExportEndpoint, string> = {
+  "attendance/export": "attendance-export",
+  "attendance/reports/monthly/export": "attendance-monthly-report",
+};
+
+// Downloads an attendance export through the same authenticated axios client
+// every dashboard request uses (Authorization header + 401 refresh handling),
+// then hands the blob to the browser as a file. The filename keeps the one
+// from the backend's Content-Disposition when present.
 export async function downloadExport(
-  endpoint: "export" | "reports/monthly/export",
+  endpoint: ExportEndpoint,
   params: ExportParams,
 ): Promise<void> {
-  const accessToken = useAuthStore.getState().accessToken;
-  const search = new URLSearchParams();
-
+  const query: Record<string, string> = {};
   for (const [key, value] of Object.entries(params)) {
     if (value) {
-      search.set(key, value);
+      query[key] = value;
     }
   }
 
-  const response = await fetch(`${env.NEXT_PUBLIC_API_BASE_URL}/${endpoint}?${search}`, {
-    headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
-  });
-
-  const contentType = response.headers.get("content-type") ?? "";
-
-  if (!response.ok || contentType.includes("application/json")) {
-    let message = `Export failed (${response.status})`;
-
-    try {
-      const data = (await response.json()) as { message?: string };
-      if (data.message) {
-        message = data.message;
-      }
-    } catch {
-      // Response was not JSON; keep the fallback message.
-    }
-
-    throw new ApiError(response.status, message);
+  let response: AxiosResponse<Blob>;
+  try {
+    response = await api.get<Blob>(`/${endpoint}`, {
+      params: query,
+      responseType: "blob",
+    });
+  } catch (error) {
+    throw error instanceof ApiError
+      ? error
+      : new ApiError(0, "Something went wrong");
   }
 
-  const disposition = response.headers.get("content-disposition") ?? "";
-  const filename = /filename="([^"]+)"/.exec(disposition)?.[1] ?? "attendance-export";
-  const blob = await response.blob();
-  const url = URL.createObjectURL(blob);
+  const dispositionHeader = response.headers["content-disposition"];
+  const disposition = Array.isArray(dispositionHeader)
+    ? dispositionHeader[0]
+    : (dispositionHeader ?? "");
+  const basename = /filename="([^"]+)"/.exec(disposition)?.[1];
+  const extension = query.format === "xlsx" ? "xlsx" : "csv";
+  const filename = basename ?? `${FALLBACK_FILENAMES[endpoint]}.${extension}`;
+
+  const blob = response.data;
+  const blobUrl = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
-  anchor.href = url;
+  anchor.href = blobUrl;
   anchor.download = filename;
   document.body.appendChild(anchor);
   anchor.click();
   anchor.remove();
-  URL.revokeObjectURL(url);
+  URL.revokeObjectURL(blobUrl);
 }

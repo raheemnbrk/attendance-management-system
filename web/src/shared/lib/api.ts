@@ -103,13 +103,30 @@ api.interceptors.response.use(
       }
     }
 
-    const message =
-      (error.response?.data as ApiErrorEnvelope | undefined)?.message ??
-      (status === undefined ? "Cannot reach the server" : "Something went wrong");
+    const message = await apiErrorMessageFromData(error.response?.data, status);
 
     return Promise.reject(new ApiError(status ?? 0, message));
   },
 );
+
+// With blob responses (file downloads) the error body arrives as a Blob, so
+// the API message must be parsed back out of it for toasts to show the real
+// reason (e.g. the 429 rate-limit text forwarded by the backend).
+async function apiErrorMessageFromData(data: unknown, status: number | undefined): Promise<string> {
+  if (typeof Blob !== "undefined" && data instanceof Blob) {
+    try {
+      const parsed = JSON.parse(await data.text()) as ApiErrorEnvelope;
+      if (parsed.message) {
+        return parsed.message;
+      }
+    } catch {
+      // Blob was not JSON; fall back to the generic message.
+    }
+  }
+
+  return (data as ApiErrorEnvelope | undefined)?.message ??
+    (status === undefined ? "Cannot reach the server" : "Something went wrong");
+}
 
 export async function apiRequest<T>(config: AxiosRequestConfig): Promise<T> {
   const response = await api.request<ApiEnvelope<T>>(config);

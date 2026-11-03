@@ -148,7 +148,7 @@ export default function AttendancePage() {
           </p>
         </div>
         <ExportMenu
-          endpoint="export"
+          endpoint="attendance/export"
           params={{
             from: range.from,
             to: range.to,

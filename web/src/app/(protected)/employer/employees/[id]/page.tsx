@@ -179,7 +179,7 @@ export default function EmployeeDetailPage({ params }: { params: Promise<{ id: s
         {employee ? (
           <div className="flex gap-2">
             <ExportMenu
-              endpoint="export"
+              endpoint="attendance/export"
               params={{
                 from: range.from,
                 to: range.to,

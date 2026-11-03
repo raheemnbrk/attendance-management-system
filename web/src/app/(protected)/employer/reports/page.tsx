@@ -165,7 +165,7 @@ export default function ReportsPage() {
             <Printer aria-hidden="true" />
             Print
           </Button>
-          <ExportMenu endpoint="reports/monthly/export" params={{ month }} />
+          <ExportMenu endpoint="attendance/reports/monthly/export" params={{ month }} />
         </div>
       </div>
 
