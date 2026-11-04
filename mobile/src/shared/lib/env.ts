@@ -31,7 +31,9 @@ if (!parsed.success) {
     "then restart the dev server so the value is re-inlined (a Metro cache restart may be needed).",
     "The app cannot make any API requests until this is fixed.",
   ].join(" ");
-  console.error(`[env] ${details}`);
+  if (__DEV__) {
+    console.error(`[env] ${details}`);
+  }
   throw new Error(details);
 }
 

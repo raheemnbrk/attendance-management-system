@@ -20,6 +20,13 @@ export function loginRequest(values: LoginValues): Promise<{ data: LoginResponse
     method: "POST",
     body: values,
     timeoutMs: LOGIN_REQUEST_TIMEOUT_MS,
+    // Idempotent enough to repeat: a dropped cold-start connection must not
+    // fail the whole login outright.
+    retries: 1,
+    // No token exists before login; a 401 here means bad credentials, not an
+    // expired session, so the refresh/logout flow must stay out of the way.
+    auth: false,
+    skipAuthRefresh: true,
   });
 }
 

@@ -1,12 +1,12 @@
 import { Ionicons } from "@expo/vector-icons";
 import { StyleSheet, Text, View } from "react-native";
 import { Alert as AlertBox } from "@/shared/components/ui/Alert";
-import { Badge } from "@/shared/components/ui/Badge";
 import { Skeleton } from "@/shared/components/ui/Skeleton";
 import { toFriendlyMessage } from "@/shared/api/errors";
 import { formatWorkedMinutes } from "@/shared/lib/date";
 import { fontSize, spacing } from "@/shared/theme/colors";
 import { useTheme } from "@/shared/theme/theme-provider";
+import { useDelayedFlag } from "@/shared/hooks/use-delayed-flag";
 import type { MonthSummary } from "@/features/attendance/types";
 
 export type MonthSummaryProps = {
@@ -31,6 +31,16 @@ const statConfig: Array<{
 
 export function MonthSummary({ summary, loading = false, error, onRetry }: MonthSummaryProps) {
   const { colors } = useTheme();
+  const values = summary
+    ? [
+        String(summary.daysPresent),
+        formatWorkedMinutes(summary.totalMinutes),
+        formatWorkedMinutes(summary.averageMinutesPerDay),
+        String(summary.forgottenCheckOuts),
+      ]
+    : null;
+  // Fast loads never flash the value placeholders.
+  const showValueSkeleton = useDelayedFlag(loading || values === null);
 
   if (error) {
     return (
@@ -41,15 +51,6 @@ export function MonthSummary({ summary, loading = false, error, onRetry }: Month
       />
     );
   }
-
-  const values = summary
-    ? [
-        String(summary.daysPresent),
-        formatWorkedMinutes(summary.totalMinutes),
-        formatWorkedMinutes(summary.averageMinutesPerDay),
-        String(summary.forgottenCheckOuts),
-      ]
-    : null;
 
   return (
     <View style={styles.grid}>
@@ -78,8 +79,8 @@ export function MonthSummary({ summary, loading = false, error, onRetry }: Month
             accessibilityLabel={`${config.label}: ${values ? values[index] : "loading"}`}
           >
             <Ionicons name={config.icon} size={18} color={foreground} />
-            {loading || values === null ? (
-              <Skeleton width={72} height={22} />
+            {!values ? null : showValueSkeleton ? (
+              <Skeleton width="100%" height={26} />
             ) : (
               <Text style={[styles.value, { color: foreground }]}>{values[index]}</Text>
             )}

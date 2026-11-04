@@ -13,18 +13,21 @@ import { toFriendlyMessage } from "@/shared/api/errors";
 import { Alert as AlertBox } from "@/shared/components/ui/Alert";
 import { Badge } from "@/shared/components/ui/Badge";
 import { Card } from "@/shared/components/ui/Card";
-import { Skeleton } from "@/shared/components/ui/Skeleton";
+import { Skeleton, SkeletonText } from "@/shared/components/ui/Skeleton";
 import { Header } from "@/shared/components/layout/Header";
 import { Screen } from "@/shared/components/layout/Screen";
 import { useTabBarHeight } from "@/shared/components/navigation/use-tab-bar-height";
+import { useDelayedFlag } from "@/shared/hooks/use-delayed-flag";
 import {
   addMonths,
+  calendarWeeks,
   formatListDay,
   formatMonthTitle,
   formatTime12,
   formatWorkedMinutes,
   localIso,
   monthKey,
+  weekdayHeaders,
 } from "@/shared/lib/date";
 import { fontSize, hitSlop, radius, spacing } from "@/shared/theme/colors";
 import { useTheme } from "@/shared/theme/theme-provider";
@@ -53,6 +56,11 @@ export function HistoryScreen() {
   const history = useHistoryInfiniteQuery(monthDate);
   const summary = useMonthSummaryQuery(monthDate);
   const monthRecords = useMonthRecordsQuery(monthDate);
+
+  // Skeletons only appear once loading has actually lasted a while, so quick
+  // responses and cached months never flash placeholders.
+  const showListSkeleton = useDelayedFlag(history.isLoading);
+  const showCalendarSkeleton = useDelayedFlag(monthRecords.isLoading);
 
   const items = useMemo(
     () => history.data?.pages.flatMap((page) => page.items) ?? [],
@@ -209,11 +217,16 @@ export function HistoryScreen() {
                 />
               </View>
             ) : history.isLoading ? (
-              <View style={styles.emptyWrap}>
-                <Skeleton height={72} />
-                <Skeleton height={72} />
-                <Skeleton height={72} />
-              </View>
+              showListSkeleton ? (
+                <View style={styles.emptyWrap}>
+                  <DayCardSkeleton />
+                  <DayCardSkeleton />
+                  <DayCardSkeleton />
+                </View>
+              ) : (
+                // <300 ms of loading: keep the empty area instead of a flash.
+                undefined
+              )
             ) : (
               <EmptyState />
             )
@@ -221,7 +234,7 @@ export function HistoryScreen() {
           ListFooterComponent={
             history.isFetchingNextPage ? (
               <View style={styles.footer}>
-                <Skeleton height={72} />
+                <DayCardSkeleton />
               </View>
             ) : undefined
           }
@@ -241,11 +254,11 @@ export function HistoryScreen() {
           ) : (
             <>
               <Card padding={spacing.md}>
-                {monthRecords.isLoading ? (
-                  <View style={styles.calendarSkeleton}>
-                    <Skeleton height={16} width={220} />
-                    <Skeleton height={232} style={{ marginTop: spacing.md }} />
-                  </View>
+                {showCalendarSkeleton ? (
+                  <CalendarSkeleton monthDate={monthDate} />
+                ) : monthRecords.isLoading ? (
+                  // <300 ms of loading: keep the card empty instead of a flash.
+                  null
                 ) : (
                   <>
                     <CalendarMonth
@@ -305,6 +318,54 @@ function MonthArrow({
         color={color}
       />
     </Pressable>
+  );
+}
+
+/** Day-row placeholder mirroring DayCard: same card chrome, padding, left
+ * date/times column and right worked + badge column. */
+function DayCardSkeleton() {
+  return (
+    <Card padding={spacing.md + 2} style={daySkeletonStyles.card}>
+      <View style={daySkeletonStyles.row}>
+        <View style={daySkeletonStyles.info}>
+          <SkeletonText width={110} height={20} />
+          <SkeletonText width={128} height={16} />
+        </View>
+        <View style={daySkeletonStyles.right}>
+          <SkeletonText width={52} height={18} />
+          <Skeleton width={68} height={24} borderRadius={999} />
+        </View>
+      </View>
+    </Card>
+  );
+}
+
+/** Calendar placeholder mirroring CalendarMonth: weekday header row plus as
+ * many week rows as the month actually has, day pill and status dot per cell. */
+function CalendarSkeleton({ monthDate }: { monthDate: Date }) {
+  const weeks = calendarWeeks(monthDate);
+  return (
+    <View accessibilityLabel="Loading attendance calendar">
+      <View style={daySkeletonStyles.calendarHeader}>
+        {weekdayHeaders().map((day, index) => (
+          <View key={`${day}-${index}`} style={daySkeletonStyles.calendarCell}>
+            <Skeleton width={22} height={16} />
+          </View>
+        ))}
+      </View>
+      {weeks.map((week, weekIndex) => (
+        <View key={`week-${weekIndex}`} style={daySkeletonStyles.calendarWeek}>
+          {week.map((day) => (
+            <View key={localIso(day)} style={daySkeletonStyles.calendarCell}>
+              <Skeleton width={32} height={22} borderRadius={999} />
+              <View style={daySkeletonStyles.calendarDotSlot}>
+                <Skeleton width={8} height={8} circle />
+              </View>
+            </View>
+          ))}
+        </View>
+      ))}
+    </View>
   );
 }
 
@@ -381,6 +442,44 @@ function EmptyState() {
   );
 }
 
+const daySkeletonStyles = StyleSheet.create({
+  card: {
+    width: "100%",
+  },
+  row: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.md,
+  },
+  info: {
+    flex: 1,
+    gap: spacing.xs,
+  },
+  right: {
+    alignItems: "flex-end",
+    gap: spacing.xs,
+  },
+  calendarHeader: {
+    flexDirection: "row",
+    marginBottom: spacing.xs,
+  },
+  calendarWeek: {
+    flexDirection: "row",
+  },
+  calendarCell: {
+    alignItems: "center",
+    flex: 1,
+    paddingVertical: 3,
+  },
+  calendarDotSlot: {
+    alignItems: "center",
+    height: 18,
+    justifyContent: "center",
+    marginTop: 1,
+    width: 18,
+  },
+});
+
 const styles = StyleSheet.create({
   sectionStack: {
     gap: spacing.md,
@@ -423,10 +522,6 @@ const styles = StyleSheet.create({
   calendarStack: {
     flex: 1,
     gap: spacing.md,
-  },
-  calendarSkeleton: {
-    alignItems: "center",
-    width: "100%",
   },
   detailCard: {
     gap: spacing.sm,

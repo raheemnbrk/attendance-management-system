@@ -22,7 +22,14 @@ export function Card({ children, style, padding = spacing.lg, accessibilityLabel
           borderColor: colors.border,
           padding: padding === "none" ? 0 : padding,
         },
-        !isDark && styles.shadow,
+        !isDark && {
+          borderWidth: 0,
+          elevation: 2,
+          shadowColor: colors.shadow,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.06,
+          shadowRadius: 12,
+        },
         style,
       ]}
     >
@@ -36,13 +43,5 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     borderWidth: StyleSheet.hairlineWidth,
     overflow: "hidden",
-  },
-  shadow: {
-    borderWidth: 0,
-    elevation: 2,
-    shadowColor: "#0F172A",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
   },
 });

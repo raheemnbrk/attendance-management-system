@@ -21,13 +21,16 @@ const iconByTone: Record<AlertTone, keyof typeof Ionicons.glyphMap> = {
   success: "checkmark-circle",
 };
 
-function useToneColors(tone: AlertTone): { strong: keyof ThemeColors; soft: keyof ThemeColors } {
+function useToneColors(
+  tone: AlertTone,
+): { strong: keyof ThemeColors; soft: keyof ThemeColors } {
   return tone === "success"
     ? { strong: "success", soft: "successSoft" }
     : tone === "warning"
       ? { strong: "warning", soft: "warningSoft" }
       : tone === "error"
-        ? { strong: "destructive", soft: "destructiveSoft" }
+        ? // Soft red text on a soft red tint — never white on a solid red box.
+          { strong: "destructiveText", soft: "destructiveSoft" }
         : { strong: "info", soft: "infoSoft" };
 }
 

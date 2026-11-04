@@ -1,5 +1,6 @@
 import {
   ApiError,
+  SERVER_ERROR_MESSAGE,
   TIMEOUT_ERROR_MESSAGE,
 } from "@/shared/api/errors";
 import { env } from "@/shared/lib/env";
@@ -27,6 +28,14 @@ export type RequestConfig = {
   auth?: boolean;
   /** Overrides the default request timeout, e.g. login waits 60s for cold starts. */
   timeoutMs?: number;
+  /** Extra attempts for transient failures (network drop / timeout), e.g.
+   * login survives a dropped connection during a Render cold start. Only set
+   * this for requests that are safe to repeat. */
+  retries?: number;
+  /** Excludes the request from the expired-session flow: a 401 neither
+   * triggers a token refresh nor a forced logout. Required for the auth
+   * endpoints themselves (login), which never own a valid token yet. */
+  skipAuthRefresh?: boolean;
 };
 
 type AuthEventHandler = {
@@ -87,15 +96,17 @@ async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs: numbe
   }
 }
 
-/** __DEV__-only diagnostics for failed requests. Logs the exact URL, method and
- * the caught error's name/message. Never logs headers, tokens or bodies. */
-function logFailedRequest(url: string, method: string, error: unknown): void {
+/** __DEV__-only diagnostics for failed requests. Logs only the method, status
+ * code (when known) and a short message. Never logs the URL, headers, tokens
+ * or bodies. */
+function logFailedRequest(method: string, error: unknown): void {
   if (!__DEV__) {
     return;
   }
-  const name = error instanceof Error ? error.name : typeof error;
+  const status = error instanceof ApiError && error.status !== undefined ? ` (status ${error.status})` : "";
   const message = error instanceof Error ? error.message : String(error);
-  console.log(`[api] ${method} ${url} failed → ${name}: ${message}`);
+  const short = message.length > 80 ? `${message.slice(0, 80)}…` : message;
+  console.log(`[api] ${method} request failed${status} → ${short}`);
 }
 
 async function parseJson(response: Response): Promise<ApiEnvelope<unknown> | null> {
@@ -179,6 +190,7 @@ export async function apiRequest<TData>(config: RequestConfig): Promise<ApiSucce
   const timeoutMs = config.timeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS;
   let reauthenticated = false;
   let retriedNetwork = false;
+  let retriesLeft = config.retries ?? 0;
 
   for (;;) {
     const headers: Record<string, string> = {
@@ -202,25 +214,42 @@ export async function apiRequest<TData>(config: RequestConfig): Promise<ApiSucce
         timeoutMs,
       );
     } catch (error) {
-      logFailedRequest(endpoint, method, error);
+      logFailedRequest(method, error);
       if (error instanceof TimeoutError) {
+        // The single retry covers Render free-tier cold starts, whose very
+        // first connection can drop or blow the budget.
+        if (retriesLeft > 0) {
+          retriesLeft -= 1;
+          continue;
+        }
         throw new ApiError(TIMEOUT_ERROR_MESSAGE);
       }
       if (method === "GET" && !retriedNetwork && error instanceof TypeError) {
         retriedNetwork = true;
         continue;
       }
+      if (error instanceof TypeError && retriesLeft > 0) {
+        retriesLeft -= 1;
+        continue;
+      }
       throw error instanceof Error ? error : new ApiError("Something went wrong. Please try again.");
     }
 
-    if (response.status === 401 && shouldAuth && !reauthenticated) {
+    if (
+      response.status === 401 &&
+      shouldAuth &&
+      !reauthenticated &&
+      // Auth endpoints (login) can also answer 401 (bad credentials) — that is
+      // not an expired session, so the refresh flow must not kick in.
+      !config.skipAuthRefresh
+    ) {
       const fresh = await handleExpiredSession();
       if (fresh) {
         reauthenticated = true;
         continue;
       }
       const sessionError = new ApiError("Your session has expired. Please sign in again.", 401);
-      logFailedRequest(endpoint, method, sessionError);
+      logFailedRequest(method, sessionError);
       throw sessionError;
     }
 
@@ -229,8 +258,13 @@ export async function apiRequest<TData>(config: RequestConfig): Promise<ApiSucce
       const message = envelope && !envelope.success && envelope.message
         ? envelope.message
         : "Something went wrong. Please try again.";
-      const apiError = new ApiError(message, response.status);
-      logFailedRequest(endpoint, method, apiError);
+      // 5xx responses are server-side; the caller cannot fix "Internal server
+      // error", so a single canned message covers the whole 5xx range.
+      const apiError = new ApiError(
+        response.status >= 500 ? SERVER_ERROR_MESSAGE : message,
+        response.status,
+      );
+      logFailedRequest(method, apiError);
       throw apiError;
     }
 
@@ -242,7 +276,7 @@ export async function apiRequest<TData>(config: RequestConfig): Promise<ApiSucce
           : "Unexpected server response.",
         response.status,
       );
-      logFailedRequest(endpoint, method, apiError);
+      logFailedRequest(method, apiError);
       throw apiError;
     }
 

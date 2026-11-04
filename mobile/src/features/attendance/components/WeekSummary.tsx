@@ -1,10 +1,11 @@
 import { Ionicons } from "@expo/vector-icons";
 import { StyleSheet, Text, View } from "react-native";
 import { Card } from "@/shared/components/ui/Card";
-import { Skeleton } from "@/shared/components/ui/Skeleton";
+import { SkeletonText } from "@/shared/components/ui/Skeleton";
 import { formatWorkedMinutes } from "@/shared/lib/date";
 import { fontSize, spacing } from "@/shared/theme/colors";
 import { useTheme } from "@/shared/theme/theme-provider";
+import { useDelayedFlag } from "@/shared/hooks/use-delayed-flag";
 
 export type WeekSummaryProps = {
   daysPresent: number | null;
@@ -14,6 +15,8 @@ export type WeekSummaryProps = {
 
 export function WeekSummary({ daysPresent, totalMinutes, loading = false }: WeekSummaryProps) {
   const { colors } = useTheme();
+  // Fast loads never flash the value placeholders.
+  const showValueSkeleton = useDelayedFlag(loading);
 
   return (
     <Card
@@ -29,8 +32,8 @@ export function WeekSummary({ daysPresent, totalMinutes, loading = false }: Week
         <View style={styles.stat}>
           <Ionicons name="calendar-outline" size={18} color={colors.primary} />
           <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>Days present</Text>
-          {loading ? (
-            <Skeleton width={40} height={20} />
+          {showValueSkeleton ? (
+            <SkeletonText width={40} height={22} />
           ) : (
             <Text style={[styles.statValue, { color: colors.foreground }]}>{daysPresent ?? 0}</Text>
           )}
@@ -39,8 +42,8 @@ export function WeekSummary({ daysPresent, totalMinutes, loading = false }: Week
         <View style={styles.stat}>
           <Ionicons name="time-outline" size={18} color={colors.primary} />
           <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>Total hours</Text>
-          {loading ? (
-            <Skeleton width={64} height={20} />
+          {showValueSkeleton ? (
+            <SkeletonText width={72} height={22} />
           ) : (
             <Text style={[styles.statValue, { color: colors.foreground }]}>
               {formatWorkedMinutes(totalMinutes ?? 0)}

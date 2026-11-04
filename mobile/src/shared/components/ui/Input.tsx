@@ -1,4 +1,4 @@
-import { forwardRef, type ReactNode } from "react";
+import { forwardRef, useState, type ReactNode } from "react";
 import {
   StyleSheet,
   Text,
@@ -9,6 +9,7 @@ import {
   type ViewStyle,
 } from "react-native";
 import { useController, type Control, type FieldPath, type FieldValues } from "react-hook-form";
+import { FormError } from "@/shared/components/auth/FormError";
 import { fontSize, radius, spacing } from "@/shared/theme/colors";
 import { useTheme } from "@/shared/theme/theme-provider";
 
@@ -23,11 +24,22 @@ export type InputProps = {
 } & TextInputProps;
 
 export const Input = forwardRef<TextInputInstance, InputProps>(function Input(
-  { label, error, icon, right, containerStyle, style, ...inputProps },
+  { label, error, icon, right, containerStyle, style, onFocus, onBlur, ...inputProps },
   ref,
 ) {
   const { colors } = useTheme();
   const hasError = Boolean(error);
+  const [focused, setFocused] = useState(false);
+
+  const handleFocus: NonNullable<TextInputProps["onFocus"]> = (event) => {
+    setFocused(true);
+    onFocus?.(event);
+  };
+
+  const handleBlur: NonNullable<TextInputProps["onBlur"]> = (event) => {
+    setFocused(false);
+    onBlur?.(event);
+  };
 
   return (
     <View style={[styles.container, containerStyle]}>
@@ -37,7 +49,16 @@ export const Input = forwardRef<TextInputInstance, InputProps>(function Input(
       <View
         style={[
           styles.field,
-          { backgroundColor: colors.card, borderColor: hasError ? colors.destructive : colors.border },
+          {
+            backgroundColor: colors.surfaceElevated,
+            // Visible by default, teal while focused, destructive on errors.
+            borderColor: hasError
+              ? colors.destructive
+              : focused
+                ? colors.primary
+                : colors.borderStrong,
+          },
+          focused && !hasError && styles.focusedField,
         ]}
       >
         {icon ? (
@@ -46,6 +67,8 @@ export const Input = forwardRef<TextInputInstance, InputProps>(function Input(
         <TextInput
           ref={ref}
           placeholderTextColor={colors.mutedForeground}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
           style={[
             styles.input,
             { color: colors.foreground },
@@ -56,14 +79,7 @@ export const Input = forwardRef<TextInputInstance, InputProps>(function Input(
         />
         {right ? <View style={styles.right}>{right}</View> : null}
       </View>
-      {hasError ? (
-        <Text
-          style={[styles.error, { color: colors.destructive }]}
-          accessibilityLiveRegion="polite"
-        >
-          {error}
-        </Text>
-      ) : null}
+      {hasError && error ? <FormError message={error} /> : null}
     </View>
   );
 });
@@ -109,6 +125,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     minHeight: 52,
   },
+  focusedField: {
+    borderWidth: 1.5,
+  },
   icon: {
     alignItems: "center",
     justifyContent: "center",
@@ -126,9 +145,5 @@ const styles = StyleSheet.create({
   },
   right: {
     paddingRight: spacing.sm,
-  },
-  error: {
-    fontSize: fontSize.xs,
-    marginTop: spacing.xs,
   },
 });

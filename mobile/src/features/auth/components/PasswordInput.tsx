@@ -11,15 +11,15 @@ export type PasswordInputProps = {
   value: string;
   onChangeText: (text: string) => void;
   accessibilityLabel?: string;
-} & Pick<TextInputProps, "placeholder" | "autoFocus" | "autoComplete" | "onBlur" | "onSubmitEditing" | "returnKeyType" | "blurOnSubmit" | "textContentType">;
+} & Pick<TextInputProps, "placeholder" | "autoFocus" | "autoComplete" | "onBlur" | "onSubmitEditing" | "returnKeyType" | "blurOnSubmit" | "textContentType" | "keyboardAppearance">;
 
 export function PasswordInput({
   label,
   error,
   value,
   onChangeText,
-  placeholder,
   accessibilityLabel,
+  placeholder,
   ...inputProps
 }: PasswordInputProps) {
   const { colors } = useTheme();

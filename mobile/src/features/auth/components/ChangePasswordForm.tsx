@@ -1,10 +1,13 @@
+import { Ionicons } from "@expo/vector-icons";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { Keyboard, StyleSheet, Text, View } from "react-native";
 import { Alert } from "@/shared/components/ui/Alert";
-import { Button } from "@/shared/components/ui/Button";
+import { AuthCard } from "@/shared/components/auth/AuthCard";
+import { AuthTitles } from "@/shared/components/auth/AuthTitles";
+import { PrimaryButton } from "@/shared/components/auth/PrimaryButton";
 import { toFriendlyMessage } from "@/shared/api/errors";
 import { fontSize, spacing } from "@/shared/theme/colors";
 import { useTheme } from "@/shared/theme/theme-provider";
@@ -15,11 +18,15 @@ import {
   type ChangePasswordValues,
 } from "@/features/auth/schema";
 
+/** How long the success confirmation stays on screen before redirecting. */
+const SUCCESS_REDIRECT_DELAY_MS = 1200;
+
 export function ChangePasswordForm() {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const router = useRouter();
   const change = useChangePassword();
   const [serverError, setServerError] = useState<string | null>(null);
+  const [succeeded, setSucceeded] = useState(false);
 
   const form = useForm<ChangePasswordValues>({
     resolver: zodResolver(changePasswordFormSchema),
@@ -32,23 +39,32 @@ export function ChangePasswordForm() {
     setServerError(null);
     try {
       await change.mutateAsync(values);
-      router.replace("/(tabs)");
+      // Show the success confirmation briefly, then continue to the app.
+      setSucceeded(true);
+      setTimeout(() => {
+        router.replace("/(tabs)");
+      }, SUCCESS_REDIRECT_DELAY_MS);
     } catch (error) {
       setServerError(toFriendlyMessage(error));
     }
   });
 
-  const title = "Change password";
-  const subtitle = "Create a new password you will use to sign in";
-
   return (
-    <View style={styles.form}>
-      <View style={styles.titles}>
-        <Text style={[styles.title, { color: colors.foreground }]}>{title}</Text>
-        <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>{subtitle}</Text>
+    <AuthCard>
+      <AuthTitles
+        title="Change password"
+        subtitle="Create a new password you will use to sign in"
+      />
+
+      <View style={[styles.hint, { backgroundColor: colors.primarySoft }]}>
+        <Ionicons name="shield-checkmark-outline" size={16} color={colors.primary} />
+        <Text style={[styles.hintText, { color: colors.mutedForeground }]}>
+          At least 8 characters, and different from your current password.
+        </Text>
       </View>
 
-      {serverError ? <Alert message={serverError} tone="error" /> : null}
+      {succeeded ? <Alert message="Password updated. Signing you in…" tone="success" /> : null}
+      {serverError && !succeeded ? <Alert message={serverError} tone="error" /> : null}
 
       <Controller
         control={form.control}
@@ -60,6 +76,7 @@ export function ChangePasswordForm() {
             placeholder="Your current password"
             autoComplete="password"
             returnKeyType="next"
+            keyboardAppearance={isDark ? "dark" : "light"}
             value={value}
             onChangeText={onChange}
             onBlur={onBlur}
@@ -78,6 +95,7 @@ export function ChangePasswordForm() {
             placeholder="At least 8 characters"
             autoComplete="new-password"
             returnKeyType="next"
+            keyboardAppearance={isDark ? "dark" : "light"}
             value={value}
             onChangeText={onChange}
             onBlur={onBlur}
@@ -96,6 +114,7 @@ export function ChangePasswordForm() {
             placeholder="Repeat the new password"
             autoComplete="new-password"
             returnKeyType="done"
+            keyboardAppearance={isDark ? "dark" : "light"}
             value={value}
             onChangeText={onChange}
             onBlur={onBlur}
@@ -107,25 +126,35 @@ export function ChangePasswordForm() {
         )}
       />
 
-      <Button title="Save password" size="lg" loading={change.isPending} onPress={handleSubmit} accessibilityLabel="Save new password" />
-    </View>
+      <PrimaryButton
+        title={succeeded ? "Password updated" : "Save password"}
+        loading={change.isPending}
+        disabled={succeeded}
+        onPress={handleSubmit}
+        accessibilityLabel="Save new password"
+        style={styles.submit}
+      />
+    </AuthCard>
   );
 }
 
 const styles = StyleSheet.create({
-  form: {
-    gap: spacing.md,
-    width: "100%",
+  hint: {
+    alignItems: "center",
+    alignSelf: "center",
+    borderRadius: spacing.sm + 2,
+    flexDirection: "row",
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
   },
-  titles: {
-    gap: spacing.xs,
-    marginBottom: spacing.xs,
+  hintText: {
+    flex: 1,
+    flexShrink: 1,
+    fontSize: fontSize.xs,
+    fontWeight: "500",
   },
-  title: {
-    fontSize: fontSize.xxl,
-    fontWeight: "800",
-  },
-  subtitle: {
-    fontSize: fontSize.md,
+  submit: {
+    marginTop: spacing.xs,
   },
 });

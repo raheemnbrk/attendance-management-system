@@ -1,14 +1,15 @@
-import { Ionicons } from "@expo/vector-icons";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { Keyboard, StyleSheet, Text, View } from "react-native";
+import { Keyboard, StyleSheet } from "react-native";
 import { Alert, type AlertTone } from "@/shared/components/ui/Alert";
-import { Button } from "@/shared/components/ui/Button";
+import { AuthCard } from "@/shared/components/auth/AuthCard";
+import { AuthTitles } from "@/shared/components/auth/AuthTitles";
+import { PrimaryButton } from "@/shared/components/auth/PrimaryButton";
 import { Input } from "@/shared/components/ui/Input";
-import { toFriendlyMessage } from "@/shared/api/errors";
-import { fontSize, hitSlop, spacing } from "@/shared/theme/colors";
+import { ApiError, isNetworkError, isTimeoutError, toFriendlyMessage } from "@/shared/api/errors";
+import { spacing } from "@/shared/theme/colors";
 import { useTheme } from "@/shared/theme/theme-provider";
 import { useLogin } from "@/features/auth/hooks";
 import { PasswordInput } from "@/features/auth/components/PasswordInput";
@@ -18,20 +19,39 @@ import {
 } from "@/features/auth/schema";
 
 const NON_EMPLOYEE_MESSAGE = "Admin and employer accounts use the web dashboard";
+const WAKE_UP_NOTICE_MESSAGE = "Waking up the server, this can take a moment...";
+/** The backend runs on a free tier and can take a while to answer the first
+ * request; reassure the user instead of spinning silently. */
+const WAKE_UP_NOTICE_DELAY_MS = 5000;
 
-function errorTone(error: unknown): { tone: AlertTone; message: string } {
+type LoginNotice = { tone: AlertTone; message: string } | null;
+
+/** Distinguishes the login failure modes for the inline alert: bad
+ * credentials (401), backend account conditions (403, e.g. awaiting
+ * approval), unreachable server, everything else shows the server's message. */
+function loginNotice(error: unknown): NonNullable<LoginNotice> {
+  if (error instanceof ApiError && error.status === 401) {
+    return { tone: "error", message: "Incorrect email or password." };
+  }
+  if (error instanceof ApiError && error.status === 403) {
+    return { tone: "warning", message: toFriendlyMessage(error) };
+  }
+  if (isTimeoutError(error) || isNetworkError(error)) {
+    return { tone: "warning", message: toFriendlyMessage(error) };
+  }
   const message = toFriendlyMessage(error);
-  if (/awaiting approval|suspended|too many/i.test(message)) {
+  if (/awaiting approval|suspended|deactivated|too many/i.test(message)) {
     return { tone: "warning", message };
   }
   return { tone: "error", message };
 }
 
 export function LoginForm() {
-  const { colors } = useTheme();
+  const { isDark } = useTheme();
   const router = useRouter();
   const login = useLogin();
-  const [serverError, setServerError] = useState<{ tone: AlertTone; message: string } | null>(null);
+  const [serverNotice, setServerNotice] = useState<LoginNotice>(null);
+  const [wakingUp, setWakingUp] = useState(false);
 
   const form = useForm<LoginValues>({
     resolver: zodResolver(loginFormSchema),
@@ -39,9 +59,17 @@ export function LoginForm() {
     mode: "onSubmit",
   });
 
+  const email = form.watch("email");
+  const password = form.watch("password");
+  const canSubmit = email.trim().length > 0 && password.length > 0;
+
   const handleSubmit = form.handleSubmit(async (values) => {
     Keyboard.dismiss();
-    setServerError(null);
+    setServerNotice(null);
+    setWakingUp(false);
+    const wakeUpTimer = setTimeout(() => {
+      setWakingUp(true);
+    }, WAKE_UP_NOTICE_DELAY_MS);
     try {
       const { role, user } = await login.mutateAsync({
         email: values.email.trim().toLowerCase(),
@@ -49,29 +77,26 @@ export function LoginForm() {
       });
 
       if (role !== "EMPLOYEE") {
-        setServerError({ tone: "info", message: NON_EMPLOYEE_MESSAGE });
+        setServerNotice({ tone: "info", message: NON_EMPLOYEE_MESSAGE });
         return;
       }
 
       const href = user.mustChangePassword ? "/change-password" : "/(tabs)";
       router.replace(href);
     } catch (error) {
-      setServerError(errorTone(error));
+      setServerNotice(loginNotice(error));
+    } finally {
+      clearTimeout(wakeUpTimer);
+      setWakingUp(false);
     }
   });
 
   return (
-    <View style={styles.form}>
-      <View style={styles.titles}>
-        <Text style={[styles.title, { color: colors.foreground }]}>Welcome back</Text>
-        <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-          Sign in to your account
-        </Text>
-      </View>
+    <AuthCard>
+      <AuthTitles title="Welcome back" subtitle="Sign in to your account" />
 
-      {serverError ? (
-        <Alert message={serverError.message} tone={serverError.tone} />
-      ) : null}
+      {serverNotice ? <Alert message={serverNotice.message} tone={serverNotice.tone} /> : null}
+      {wakingUp ? <Alert message={WAKE_UP_NOTICE_MESSAGE} tone="info" /> : null}
 
       <Controller
         control={form.control}
@@ -85,12 +110,13 @@ export function LoginForm() {
             autoCapitalize="none"
             autoComplete="email"
             autoCorrect={false}
+            textContentType="emailAddress"
             returnKeyType="next"
+            keyboardAppearance={isDark ? "dark" : "light"}
             value={value}
             onChangeText={onChange}
             onBlur={onBlur}
             error={error?.message}
-            icon={<Ionicons name="mail-outline" size={18} color={colors.mutedForeground} />}
           />
         )}
       />
@@ -104,7 +130,9 @@ export function LoginForm() {
             accessibilityLabel="Password"
             placeholder="Your password"
             autoComplete="password"
+            textContentType="password"
             returnKeyType="done"
+            keyboardAppearance={isDark ? "dark" : "light"}
             value={value}
             onChangeText={onChange}
             onBlur={onBlur}
@@ -116,31 +144,20 @@ export function LoginForm() {
         )}
       />
 
-      <Button
+      <PrimaryButton
         title="Sign in"
-        size="lg"
         loading={login.isPending}
+        disabled={!canSubmit || login.isPending}
         onPress={handleSubmit}
         accessibilityLabel="Sign in"
+        style={styles.submit}
       />
-    </View>
+    </AuthCard>
   );
 }
 
 const styles = StyleSheet.create({
-  form: {
-    gap: spacing.md,
-    width: "100%",
-  },
-  titles: {
-    gap: spacing.xs,
-    marginBottom: spacing.xs,
-  },
-  title: {
-    fontSize: fontSize.xxl,
-    fontWeight: "800",
-  },
-  subtitle: {
-    fontSize: fontSize.md,
+  submit: {
+    marginTop: spacing.xs,
   },
 });

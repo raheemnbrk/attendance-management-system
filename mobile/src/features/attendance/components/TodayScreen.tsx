@@ -4,14 +4,14 @@ import { StyleSheet, Text, View } from "react-native";
 import { toFriendlyMessage } from "@/shared/api/errors";
 import { Alert as AlertBox } from "@/shared/components/ui/Alert";
 import { Card } from "@/shared/components/ui/Card";
-import { Skeleton } from "@/shared/components/ui/Skeleton";
-import { Button } from "@/shared/components/ui/Button";
+import { Skeleton, SkeletonCircle, SkeletonText } from "@/shared/components/ui/Skeleton";
 import { Header } from "@/shared/components/layout/Header";
 import { Screen } from "@/shared/components/layout/Screen";
 import { useTabBarHeight } from "@/shared/components/navigation/use-tab-bar-height";
 import { formatElapsedClock, formatHeaderDate, formatTime12, formatWorkedMinutes } from "@/shared/lib/date";
 import { fontSize, radius, spacing } from "@/shared/theme/colors";
 import { useTheme } from "@/shared/theme/theme-provider";
+import { useDelayedFlag } from "@/shared/hooks/use-delayed-flag";
 import { useTick } from "@/shared/hooks/use-tick";
 import type { AppUser } from "@/shared/types";
 import { CheckButton } from "./CheckButton";
@@ -48,6 +48,10 @@ export function TodayScreen({ user }: TodayScreenProps) {
   const tabBarPadding = useTabBarHeight();
   const today = useTodayQuery();
   const week = useWeekSummaryQuery();
+
+  // Skeleton only appears once loading has actually lasted a while, so quick
+  // responses never flash placeholders.
+  const showSkeleton = useDelayedFlag(today.isLoading);
 
   const now = useTick(today.data?.record?.checkOut ? 30_000 : 1_000);
 
@@ -86,13 +90,34 @@ export function TodayScreen({ user }: TodayScreenProps) {
     router.push({ pathname: "/scan", params: { mode: "check-out" } });
   };
 
+  const header = (
+    <Header
+      avatar={
+        <View
+          style={[styles.avatar, { backgroundColor: colors.primarySoft }]}
+          accessibilityLabel={`Signed in as ${user?.name ?? "unknown"}`}
+        >
+          <Text style={[styles.avatarText, { color: colors.primary }]}>{initials(user?.name ?? null)}</Text>
+        </View>
+      }
+      title={firstName ? `${greeting(new Date(correctedNow).getHours())}, ${firstName}` : "Today"}
+      subtitle={formatHeaderDate(new Date(correctedNow))}
+      right={
+        <Ionicons
+          name="notifications-outline"
+          size={22}
+          color={colors.foreground}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        />
+      }
+    />
+  );
+
   if (today.isError) {
     return (
       <Screen padded>
-        <Header
-          title={firstName ? `${greeting(new Date(correctedNow).getHours())}, ${firstName}` : "Today"}
-          subtitle={formatHeaderDate(new Date(correctedNow))}
-        />
+        {header}
         <View style={styles.stateBlock}>
           <AlertBox
             message={toFriendlyMessage(today.error)}
@@ -104,24 +129,21 @@ export function TodayScreen({ user }: TodayScreenProps) {
     );
   }
 
-  if (today.isLoading) {
+  if (showSkeleton) {
     return (
       <Screen padded>
-        <Header
-          title={firstName ? `${greeting(new Date().getHours())}, ${firstName}` : "Today"}
-          subtitle={formatHeaderDate(new Date(new Date().getTime() + offsetMs))}
-        />
-        <View style={styles.skeletonWrap}>
-          <Skeleton width={240} height={240} circle />
-          <Card padding={spacing.lg} style={styles.skeletonCard}>
-            <Skeleton height={14} />
-            <Skeleton height={20} style={{ marginTop: spacing.md }} />
-          </Card>
-          <Card padding={spacing.lg} style={styles.skeletonCard}>
-            <Skeleton height={14} />
-            <Skeleton height={20} style={{ marginTop: spacing.md }} />
-          </Card>
-        </View>
+        {header}
+        <TodaySkeleton />
+      </Screen>
+    );
+  }
+
+  if (today.isLoading) {
+    // Data answered faster than the skeleton threshold: hold the header with
+    // an empty body instead of flashing placeholders.
+    return (
+      <Screen padded>
+        {header}
       </Screen>
     );
   }
@@ -135,27 +157,7 @@ export function TodayScreen({ user }: TodayScreenProps) {
       // Content scrolls under the glass bar; keep the last card reachable.
       contentStyle={{ paddingBottom: tabBarPadding }}
     >
-      <Header
-        avatar={
-          <View
-            style={[styles.avatar, { backgroundColor: colors.primarySoft }]}
-            accessibilityLabel={`Signed in as ${user?.name ?? "unknown"}`}
-          >
-            <Text style={[styles.avatarText, { color: colors.primary }]}>{initials(user?.name ?? null)}</Text>
-          </View>
-        }
-        title={firstName ? `${greeting(new Date(correctedNow).getHours())}, ${firstName}` : "Today"}
-        subtitle={formatHeaderDate(new Date(correctedNow))}
-        right={
-          <Ionicons
-            name="notifications-outline"
-            size={22}
-            color={colors.foreground}
-            accessibilityElementsHidden
-            importantForAccessibility="no-hide-descendants"
-          />
-        }
-      />
+      {header}
 
       <View style={styles.ringSection}>
         <TimerRing state={state} label={ringLabel} caption={ringCaption} progress={progress} />
@@ -191,6 +193,68 @@ export function TodayScreen({ user }: TodayScreenProps) {
   );
 }
 
+/**
+ * Loading layout mirroring the real screen 1:1 — ring, check button and both
+ * cards with matching inner structure — so nothing shifts when data arrives.
+ */
+function TodaySkeleton() {
+  const { colors } = useTheme();
+  return (
+    <>
+      <SkeletonCircle size={240} style={styles.skeletonRing} />
+      <Skeleton height={56} borderRadius={999} />
+      <View style={styles.skeletonCards}>
+        <Card padding={spacing.lg}>
+          <SkeletonText width={72} height={16} style={styles.skeletonHeading} />
+          <View style={styles.skeletonColumns}>
+            <SkeletonStatColumn labelWidth={52} valueWidth={72} />
+            <View style={[styles.skeletonDivider, { backgroundColor: colors.border }]} />
+            <SkeletonStatColumn labelWidth={62} valueWidth={88} />
+          </View>
+          <View style={[styles.skeletonWorkedRow, { backgroundColor: colors.muted }]}>
+            <Skeleton width={18} height={18} borderRadius={6} />
+            <SkeletonText width={52} height={12} />
+            <View style={styles.skeletonFlex} />
+            <SkeletonText width={72} height={12} />
+          </View>
+        </Card>
+        <Card padding={spacing.lg}>
+          <SkeletonText width={104} height={16} style={styles.skeletonHeading} />
+          <View style={styles.skeletonColumns}>
+            <SkeletonStat valueWidth={40} />
+            <View style={styles.skeletonStatDivider} />
+            <SkeletonStat valueWidth={64} />
+          </View>
+        </Card>
+      </View>
+    </>
+  );
+}
+
+/** "Check in / Check out" column: dot + label line, then a value line. */
+function SkeletonStatColumn({ labelWidth, valueWidth }: { labelWidth: number; valueWidth: number }) {
+  return (
+    <View style={styles.skeletonColumn}>
+      <View style={styles.skeletonBadgeRow}>
+        <Skeleton width={8} height={8} circle />
+        <SkeletonText width={labelWidth} height={16} />
+      </View>
+      <Skeleton width={valueWidth} height={22} />
+    </View>
+  );
+}
+
+/** "Days present / Total hours" stat: icon, label line, then a value line. */
+function SkeletonStat({ valueWidth }: { valueWidth: number }) {
+  return (
+    <View style={styles.skeletonColumn}>
+      <Skeleton width={18} height={18} borderRadius={6} />
+      <SkeletonText width={72} height={16} />
+      <Skeleton width={valueWidth} height={22} />
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   avatar: {
     alignItems: "center",
@@ -210,17 +274,56 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     marginTop: spacing.lg,
   },
-  skeletonWrap: {
-    alignItems: "center",
-    flex: 1,
-    gap: spacing.lg,
-    marginTop: spacing.xl,
-  },
-  skeletonCard: {
-    width: "100%",
-  },
   stateBlock: {
     flex: 1,
     justifyContent: "center",
+  },
+  skeletonRing: {
+    alignSelf: "center",
+    // Mirrors the real ring section's vertical margins (spacing.xl each side).
+    marginBottom: spacing.xl,
+    marginTop: spacing.xl,
+  },
+  skeletonCards: {
+    gap: spacing.md,
+    marginTop: spacing.lg,
+  },
+  skeletonHeading: {
+    marginBottom: spacing.sm,
+  },
+  skeletonColumns: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.lg,
+  },
+  skeletonColumn: {
+    flex: 1,
+    gap: spacing.xs,
+  },
+  skeletonBadgeRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.xs + 2,
+  },
+  skeletonDivider: {
+    height: "100%",
+    minHeight: 44,
+    width: StyleSheet.hairlineWidth,
+  },
+  skeletonStatDivider: {
+    alignSelf: "stretch",
+    width: StyleSheet.hairlineWidth,
+  },
+  skeletonWorkedRow: {
+    alignItems: "center",
+    borderRadius: spacing.sm + 2,
+    flexDirection: "row",
+    gap: spacing.sm,
+    marginTop: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 2,
+  },
+  skeletonFlex: {
+    flex: 1,
   },
 });

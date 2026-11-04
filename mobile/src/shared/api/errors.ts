@@ -8,10 +8,13 @@ export class ApiError extends Error {
   }
 }
 
-export const NETWORK_ERROR_MESSAGE = "No connection. Check your internet and try again.";
+export const NETWORK_ERROR_MESSAGE = "Can't reach the server.";
 
 export const TIMEOUT_ERROR_MESSAGE =
   "The server is taking too long to respond. It may be waking up, please try again.";
+
+export const SERVER_ERROR_MESSAGE = "Something went wrong. Try again.";
+
 
 export function isTimeoutError(error: unknown): boolean {
   return error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError");
