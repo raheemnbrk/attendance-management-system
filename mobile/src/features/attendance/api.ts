@@ -21,14 +21,14 @@ export async function fetchToday(): Promise<ServerStamp<AttendanceRecord | null>
   return stamp(response);
 }
 
-export async function checkInRequest(qrCode: string): Promise<ServerStamp<AttendanceRecord>> {
+export async function checkInRequest(qrToken: string): Promise<ServerStamp<AttendanceRecord>> {
   // No coordinates: location capture is not part of this app yet.
-  const response = await apiPost<AttendanceRecord>("/attendance/check-in", { qrCode });
+  const response = await apiPost<AttendanceRecord>("/attendance/check-in", { qrToken });
   return stamp(response);
 }
 
-export async function checkOutRequest(qrCode: string): Promise<ServerStamp<AttendanceRecord>> {
-  const response = await apiPost<AttendanceRecord>("/attendance/check-out", { qrCode });
+export async function checkOutRequest(qrToken: string): Promise<ServerStamp<AttendanceRecord>> {
+  const response = await apiPost<AttendanceRecord>("/attendance/check-out", { qrToken });
   return stamp(response);
 }
 

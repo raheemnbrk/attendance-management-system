@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  QrCode,
   UserRound,
   Users,
   type LucideIcon,
@@ -43,6 +44,7 @@ const EMPLOYER_NAV_ITEMS: AppNavItem[] = [
   { href: "/employer/employees", label: "Employees", icon: Users },
   { href: "/employer/attendance", label: "Attendance", icon: CalendarCheck },
   { href: "/employer/reports", label: "Reports", icon: BarChart3 },
+  { href: "/employer/entry-qr", label: "Entry QR", icon: QrCode },
 ];
 
 function getInitials(name: string): string {

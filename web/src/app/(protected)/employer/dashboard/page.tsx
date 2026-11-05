@@ -21,6 +21,7 @@ import {
 import { useEmployees } from "@/features/employees/use-employees";
 import { getAttendanceStatus } from "@/features/attendance/attendance.types";
 import { useAttendanceSummary, useEmployerAttendance, useTrend } from "@/features/attendance/use-attendance";
+import { isRestDayISO } from "@/shared/lib/business";
 import { StatusBadge } from "@/shared/components/status-badge";
 import { todayLocalISO } from "@/shared/lib/format";
 import { cn } from "@/shared/lib/utils";
@@ -78,6 +79,8 @@ function SummaryCard({
 
 export default function DashboardPage() {
   const today = todayLocalISO();
+  // Rest days (Friday, Saturday) are never shown as absences.
+  const todayIsRestDay = isRestDayISO(today);
   const [trendDays, setTrendDays] = useState(7);
 
   const { data: summary, isPending: summaryPending } = useAttendanceSummary();
@@ -101,10 +104,10 @@ export default function DashboardPage() {
       .map((employee) => ({
         employee,
         record: recordsByUserId.get(employee.id),
-        status: getAttendanceStatus(employee, recordsByUserId.get(employee.id), today),
+        status: getAttendanceStatus(employee, recordsByUserId.get(employee.id), today, todayIsRestDay),
       }))
       .sort((a, b) => {
-        const rank = { present: 0, working: 1, "forgot-check-out": 2, absent: 3, inactive: 4 } as const;
+        const rank = { present: 0, working: 1, "forgot-check-out": 2, absent: 3, rest: 4, inactive: 5 } as const;
         if (rank[a.status] !== rank[b.status]) {
           return rank[a.status] - rank[b.status];
         }
@@ -113,7 +116,7 @@ export default function DashboardPage() {
         }
         return a.employee.name.localeCompare(b.employee.name);
       });
-  }, [employees, attendanceToday, today]);
+  }, [employees, attendanceToday, today, todayIsRestDay]);
 
   const isLoading = summaryPending || trendPending || todayPending || employeesPending;
   const isEmpty = !summaryPending && summary?.totalEmployees === 0;

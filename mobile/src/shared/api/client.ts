@@ -258,11 +258,13 @@ export async function apiRequest<TData>(config: RequestConfig): Promise<ApiSucce
       const message = envelope && !envelope.success && envelope.message
         ? envelope.message
         : "Something went wrong. Please try again.";
+      const code = envelope && !envelope.success ? envelope.code : undefined;
       // 5xx responses are server-side; the caller cannot fix "Internal server
       // error", so a single canned message covers the whole 5xx range.
       const apiError = new ApiError(
         response.status >= 500 ? SERVER_ERROR_MESSAGE : message,
         response.status,
+        code,
       );
       logFailedRequest(method, apiError);
       throw apiError;

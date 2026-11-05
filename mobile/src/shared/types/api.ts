@@ -9,6 +9,8 @@ export type ApiSuccess<TData> = {
 export type ApiFailure = {
   success: false;
   message: string;
+  /** Machine-readable server error identifier, e.g. "TOO_EARLY". */
+  code?: string;
 };
 
 export type ApiEnvelope<TData> = ApiSuccess<TData> | ApiFailure;

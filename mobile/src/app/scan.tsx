@@ -6,7 +6,7 @@ import { useIsFocused, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useCheckIn, useCheckOut } from "@/features/attendance/hooks";
-import { toFriendlyMessage } from "@/shared/api/errors";
+import { ApiError, toFriendlyMessage } from "@/shared/api/errors";
 import { Button } from "@/shared/components/ui/Button";
 import { formatTime12 } from "@/shared/lib/date";
 import { fontSize, hitSlop, radius, spacing } from "@/shared/theme/colors";
@@ -17,10 +17,15 @@ type ScanMode = "check-in" | "check-out";
 type ScanPhase =
   | { status: "scanning" }
   | { status: "validating" }
-  | { status: "failed"; message: string }
+  | { status: "failed"; message: string; soft?: boolean }
   | { status: "success"; stamp: string };
 
 const SUCCESS_RETURN_DELAY_MS = 1800;
+
+/** Attendance QR codes carry a short-lived JWT issued by the backend. Anything
+ * not shaped like a JWT (three dot-separated base64url parts) is rejected
+ * before the API is called at all. */
+const JWT_LIKE_PATTERN = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
 const FRAME_MAX = 260;
 const CORNER = 28;
 const CONSOLE_STROKE = 3;
@@ -51,9 +56,18 @@ export default function ScanRoute() {
   const handleScan = (event: BarcodeScanningResult) => {
     if (scannedRef.current) return;
     scannedRef.current = true;
+
+    const token = event.data.trim();
+    if (!JWT_LIKE_PATTERN.test(token)) {
+      // Stay in "scanning" styling-wise: show the reason without a round-trip
+      // to the server.
+      setPhase({ status: "failed", message: "This is not an attendance QR code.", soft: false });
+      return;
+    }
+
     setPhase({ status: "validating" });
     const submit = mode === "check-out" ? checkOut : checkIn;
-    submit.mutate(event.data, {
+    submit.mutate(token, {
       onSuccess: (record) => {
         const stampRaw = mode === "check-in" ? record.checkIn : record.checkOut ?? record.checkIn;
         const stampMs = Date.parse(stampRaw);
@@ -63,7 +77,10 @@ export default function ScanRoute() {
         setPhase({ status: "success", stamp: stampText });
       },
       onError: (error) => {
-        setPhase({ status: "failed", message: toFriendlyMessage(error) });
+        // Expected business rules (opening time, rest day) get a soft amber
+        // notice; everything else stays red.
+        const soft = error instanceof ApiError && (error.code === "TOO_EARLY" || error.code === "REST_DAY");
+        setPhase({ status: "failed", message: toFriendlyMessage(error), soft });
       },
     });
   };
@@ -177,11 +194,26 @@ export default function ScanRoute() {
         ) : null}
 
         {phase.status === "failed" ? (
-          <View style={[styles.card, styles.cardWide, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <View style={[styles.badge, styles.cardBadge, { backgroundColor: colors.destructiveSoft }]}>
-              <Ionicons name="alert-circle" size={30} color={colors.destructive} />
+          <View
+            style={[styles.card, styles.cardWide, { backgroundColor: colors.card, borderColor: colors.border }]}
+            accessibilityLabel={`Cannot ${verb}`}
+          >
+            <View
+              style={[
+                styles.badge,
+                styles.cardBadge,
+                { backgroundColor: phase.soft ? colors.warningSoft : colors.destructiveSoft },
+              ]}
+            >
+              <Ionicons
+                name={phase.soft ? "time-outline" : "alert-circle"}
+                size={30}
+                color={phase.soft ? colors.warning : colors.destructive}
+              />
             </View>
-            <Text style={[styles.cardTitle, { color: colors.destructive }]}>Cannot {verb}</Text>
+            <Text style={[styles.cardTitle, { color: phase.soft ? colors.warning : colors.destructive }]}>
+              Cannot {verb}
+            </Text>
             <Text style={[styles.cardText, { color: colors.mutedForeground }]}>{phase.message}</Text>
             <Button title="Scan again" variant="outline" onPress={resetScan} />
           </View>
@@ -192,7 +224,9 @@ export default function ScanRoute() {
             <View style={[styles.badge, styles.cardBadge, { backgroundColor: colors.successSoft }]}>
               <Ionicons name="checkmark" size={30} color={colors.success} />
             </View>
-            <Text style={[styles.cardTitle, { color: colors.success }]}>You're {mode === "check-out" ? "checked out" : "checked in"}</Text>
+            <Text style={[styles.cardTitle, { color: colors.success }]}>
+              {"You're "}{mode === "check-out" ? "checked out" : "checked in"}
+            </Text>
             <Text style={[styles.cardTime, { color: colors.foreground }]}>{phase.stamp}</Text>
             <Text style={[styles.cardText, { color: colors.mutedForeground }]}>Returning to Today…</Text>
           </View>

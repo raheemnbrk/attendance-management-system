@@ -34,6 +34,16 @@ export type AttendanceSummary = {
   checkedOut: number;
 };
 
+// Payload of GET /attendance/entry-qr: a short-lived token rendered as the QR
+// code shown at the entrance.
+export type EntryQr = {
+  token: string;
+  /** ISO instant at which the token becomes invalid. */
+  expiresAt: string;
+  /** Token lifetime in seconds (the countdown's full range). */
+  ttlSeconds: number;
+};
+
 export type TrendDay = {
   date: string;
   present: number;
@@ -70,19 +80,21 @@ export type ExportFormat = "csv" | "xlsx";
 
 // UI-level attendance status for badges: Present = success, forgot check-out
 // on a past day = warning, absent = destructive, inactive = muted.
-export type AttendanceStatus = "present" | "forgot-check-out" | "working" | "absent" | "inactive";
+// "rest" marks the whole table on rest days (never shown as absence).
+export type AttendanceStatus = "present" | "forgot-check-out" | "working" | "absent" | "rest" | "inactive";
 
 export function getAttendanceStatus(
   employee: Pick<AuthUser, "isActive">,
   record: Pick<AttendanceRecord, "date" | "checkOut"> | undefined,
   today: string,
+  isRestDay = false,
 ): AttendanceStatus {
   if (!employee.isActive) {
     return "inactive";
   }
 
   if (!record) {
-    return "absent";
+    return isRestDay ? "rest" : "absent";
   }
 
   if (record.checkOut) {

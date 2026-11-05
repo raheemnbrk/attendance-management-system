@@ -1,10 +1,13 @@
 export class ApiError extends Error {
   readonly status?: number;
+  /** Stable server identifier when present, e.g. "TOO_EARLY", "INVALID_QR". */
+  readonly code?: string;
 
-  constructor(message: string, status?: number) {
+  constructor(message: string, status?: number, code?: string) {
     super(message);
     this.name = "ApiError";
     this.status = status;
+    this.code = code;
   }
 }
 

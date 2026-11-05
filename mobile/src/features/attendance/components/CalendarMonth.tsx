@@ -28,7 +28,7 @@ function dotColor(status: DayStatus, colors: ReturnType<typeof useTheme>["colors
       return colors.warning;
     case "absent":
       return colors.destructive;
-    case "weekend":
+    case "rest":
       return colors.mutedForeground;
     default:
       return null;

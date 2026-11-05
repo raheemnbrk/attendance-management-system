@@ -76,20 +76,22 @@ function invalidateAttendance(queryClient: ReturnType<typeof useQueryClient>): v
   void queryClient.invalidateQueries({ queryKey: ["attendance"] });
 }
 
-/** POST /attendance/check-in — refreshing all attendance data afterwards. */
+/** POST /attendance/check-in with the scanned entry QR — refreshing all
+ * attendance data afterwards. */
 export function useCheckIn(): UseMutationResult<AttendanceRecord, unknown, string> {
   const queryClient = useQueryClient();
   return useMutation<AttendanceRecord, unknown, string>({
-    mutationFn: async (qrCode) => (await checkInRequest(qrCode)).data,
+    mutationFn: async (qrToken) => (await checkInRequest(qrToken)).data,
     onSuccess: () => invalidateAttendance(queryClient),
   });
 }
 
-/** POST /attendance/check-out — refreshing all attendance data afterwards. */
+/** POST /attendance/check-out with the scanned entry QR — refreshing all
+ * attendance data afterwards. */
 export function useCheckOut(): UseMutationResult<AttendanceRecord, unknown, string> {
   const queryClient = useQueryClient();
   return useMutation<AttendanceRecord, unknown, string>({
-    mutationFn: async (qrCode) => (await checkOutRequest(qrCode)).data,
+    mutationFn: async (qrToken) => (await checkOutRequest(qrToken)).data,
     onSuccess: () => invalidateAttendance(queryClient),
   });
 }

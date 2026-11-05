@@ -16,6 +16,7 @@ import {
   listEmployerAttendance,
   listMyAttendance,
 } from "./attendance.service";
+import { createEntryToken } from "./qr-token";
 import {
   attendanceExportQuerySchema,
   employeeListQuerySchema,
@@ -27,20 +28,34 @@ import {
   summaryQuerySchema,
   trendQuerySchema,
 } from "./attendance.schema";
-import type { CheckInInput } from "./attendance.schema";
+import type { CheckInInput, CheckOutInput } from "./attendance.schema";
+
+// The employee's employer is resolved by the auth middleware; it scopes which
+// entrance QR tokens the employee may scan.
+function employerIdOf(req: Request): string | null {
+  return req.user!.employer?.id ?? null;
+}
 
 // The mobile app must never trust the phone clock, so attendance responses
 // carry the server timestamp alongside the usual { success, data } body.
 export const checkInHandler = asyncHandler(
   async (req: Request<ParamsDictionary, unknown, CheckInInput>, res: Response) => {
-    const result = await checkIn(req.user!.id, req.body);
+    const result = await checkIn(req.user!.id, employerIdOf(req), req.body);
     res.status(201).json({ success: true, data: result, serverTime: new Date().toISOString() });
   },
 );
 
-export const checkOutHandler = asyncHandler(async (req: Request, res: Response) => {
-  const result = await checkOut(req.user!.id);
-  res.status(200).json({ success: true, data: result, serverTime: new Date().toISOString() });
+export const checkOutHandler = asyncHandler(
+  async (req: Request<ParamsDictionary, unknown, CheckOutInput>, res: Response) => {
+    const result = await checkOut(req.user!.id, employerIdOf(req), req.body);
+    res.status(200).json({ success: true, data: result, serverTime: new Date().toISOString() });
+  },
+);
+
+// One short-lived token per call (the screen refreshes it before expiry).
+export const entryQrHandler = asyncHandler(async (req: Request, res: Response) => {
+  const result = createEntryToken(req.user!.id);
+  res.status(200).json({ success: true, data: result });
 });
 
 export const todayHandler = asyncHandler(async (req: Request, res: Response) => {

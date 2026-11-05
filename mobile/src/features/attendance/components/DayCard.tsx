@@ -10,8 +10,9 @@ import {
 import { fontSize, spacing } from "@/shared/theme/colors";
 import { useTheme } from "@/shared/theme/theme-provider";
 import type { AttendanceRecord } from "@/features/attendance/types";
+import { REST_DAYS } from "@/shared/lib/business";
 
-export type DayStatus = "present" | "forgotten" | "absent" | "weekend" | null;
+export type DayStatus = "present" | "forgotten" | "absent" | "rest" | null;
 
 /** Color/status rules shared by the list rows and the calendar dots. */
 export function deriveDayStatus(
@@ -21,7 +22,8 @@ export function deriveDayStatus(
   const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
   const today = new Date();
   const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  const isWeekend = dayStart.getDay() === 0 || dayStart.getDay() === 6;
+  // Company rest days: Friday and Saturday (must match the backend's REST_DAYS).
+  const isRest = REST_DAYS.includes(dayStart.getDay());
 
   if (record) {
     if (record.checkOut) {
@@ -35,8 +37,8 @@ export function deriveDayStatus(
     return "present";
   }
 
-  if (isWeekend) {
-    return "weekend";
+  if (isRest) {
+    return "rest";
   }
   if (dayStart < todayStart) {
     return "absent";
@@ -52,8 +54,8 @@ export function statusBadge(status: DayStatus): { label: string; tone: BadgeTone
       return { label: "Forgot", tone: "warning" };
     case "absent":
       return { label: "Absent", tone: "destructive" };
-    case "weekend":
-      return { label: "Weekend", tone: "muted" };
+    case "rest":
+      return { label: "Rest day", tone: "muted" };
     default:
       return null;
   }

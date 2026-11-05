@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   getAttendanceSummary,
   getEmployeeReport,
+  getEntryQr,
   getMonthlyReport,
   getTrend,
   listEmployerAttendance,
@@ -12,6 +13,23 @@ import type { ListAttendanceQuery } from "./attendance.service";
 
 export function useAttendanceSummary() {
   return useQuery({ queryKey: ["attendance", "summary"], queryFn: getAttendanceSummary });
+}
+
+/** Tokens for the entrance screen: a fresh one every ~25s while the tab is
+ * visible (token lifetime is 30s), paused when hidden and refetched the
+ * moment the tab becomes visible again. */
+export function useEntryQr() {
+  return useQuery({
+    queryKey: ["attendance", "entry-qr"],
+    queryFn: getEntryQr,
+    refetchInterval: 25_000,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
+    staleTime: 0,
+    // The whole dashboard will retry on 401 already; refresh + retry loops must
+    // not stack on failures here.
+    retry: false,
+  });
 }
 
 export function useTrend(days: number) {

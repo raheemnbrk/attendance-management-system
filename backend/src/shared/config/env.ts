@@ -7,6 +7,8 @@ const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(3000),
   JWT_ACCESS_SECRET: z.string().min(32, "JWT_ACCESS_SECRET must be at least 32 characters"),
   JWT_REFRESH_SECRET: z.string().min(32, "JWT_REFRESH_SECRET must be at least 32 characters"),
+  // Dedicated secret for the entrance-display QR tokens; separate from auth secrets.
+  ATTENDANCE_QR_SECRET: z.string().min(32, "ATTENDANCE_QR_SECRET must be at least 32 characters"),
   SEED_ADMIN_EMAIL: z.email("SEED_ADMIN_EMAIL must be a valid email"),
   SEED_ADMIN_PASSWORD: z.string().min(8, "SEED_ADMIN_PASSWORD must be at least 8 characters"),
   RATE_LIMIT_GLOBAL_MAX: z.coerce.number().int().positive().default(100),

@@ -3,6 +3,7 @@ import type {
   AttendanceSummary,
   EmployeeAttendanceRecord,
   EmployeeReport,
+  EntryQr,
   MonthlyReportRow,
   Paginated,
   TrendDay,
@@ -20,6 +21,10 @@ export type ListAttendanceQuery = {
   department?: string;
   search?: string;
 };
+
+export async function getEntryQr(): Promise<EntryQr> {
+  return apiRequest<EntryQr>({ method: "GET", url: "/attendance/entry-qr" });
+}
 
 export async function getAttendanceSummary(): Promise<AttendanceSummary> {
   return apiRequest<AttendanceSummary>({ method: "GET", url: "/attendance/summary" });

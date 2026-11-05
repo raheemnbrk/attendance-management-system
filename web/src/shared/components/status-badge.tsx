@@ -11,6 +11,7 @@ const STATUS_META: Record<AttendanceStatus, { label: string; variant: "success" 
   "forgot-check-out": { label: "Forgot check-out", variant: "warning" },
   working: { label: "Working", variant: "info" },
   absent: { label: "Absent", variant: "destructive" },
+  rest: { label: "Rest day", variant: "muted" },
   inactive: { label: "Inactive", variant: "muted" },
 };
 

@@ -9,6 +9,7 @@ import { Header } from "@/shared/components/layout/Header";
 import { Screen } from "@/shared/components/layout/Screen";
 import { useTabBarHeight } from "@/shared/components/navigation/use-tab-bar-height";
 import { formatElapsedClock, formatHeaderDate, formatTime12, formatWorkedMinutes } from "@/shared/lib/date";
+import { checkInLockReason, isRestDayAt, REST_DAY_NOTICE } from "@/shared/lib/business";
 import { fontSize, radius, spacing } from "@/shared/theme/colors";
 import { useTheme } from "@/shared/theme/theme-provider";
 import { useDelayedFlag } from "@/shared/hooks/use-delayed-flag";
@@ -60,6 +61,13 @@ export function TodayScreen({ user }: TodayScreenProps) {
   const record = today.data?.record ?? null;
   const state: TodayState =
     !record || today.isLoading ? (record ? "working" : "idle") : record.checkOut ? "done" : "working";
+
+  // Time rules are mirrored client-side on the server-corrected clock so the
+  // button pre-empts what the API would reject. The backend stays the source
+  // of truth (it answers TOO_EARLY / REST_DAY with its own messages).
+  const isRestToday = isRestDayAt(correctedNow);
+  const checkInLockedLabel = state === "idle" ? checkInLockReason(correctedNow) : null;
+  const showRestDayNotice = state === "idle" && isRestToday;
 
   const firstName = (user?.name ?? "").trim().split(/\s+/)[0] ?? "";
 
@@ -163,8 +171,15 @@ export function TodayScreen({ user }: TodayScreenProps) {
         <TimerRing state={state} label={ringLabel} caption={ringCaption} progress={progress} />
       </View>
 
+      {showRestDayNotice ? (
+        <View style={styles.notice}>
+          <AlertBox tone="info" message={REST_DAY_NOTICE} />
+        </View>
+      ) : null}
+
       <CheckButton
         state={state}
+        lockedLabel={checkInLockedLabel ?? undefined}
         onCheckIn={handleCheckIn}
         onCheckOut={handleCheckOut}
       />
@@ -273,6 +288,9 @@ const styles = StyleSheet.create({
   cards: {
     gap: spacing.md,
     marginTop: spacing.lg,
+  },
+  notice: {
+    marginBottom: spacing.md,
   },
   stateBlock: {
     flex: 1,

@@ -9,6 +9,7 @@ import {
   employeeHistoryHandler,
   employeeListHandler,
   employeeReportHandler,
+  entryQrHandler,
   monthlyReportExportHandler,
   monthlyReportHandler,
   myHistoryHandler,
@@ -18,7 +19,7 @@ import {
   todayHandler,
   trendHandler,
 } from "./attendance.controller";
-import { checkInSchema } from "./attendance.schema";
+import { checkInSchema, checkOutSchema } from "./attendance.schema";
 
 export const attendanceRouter = Router();
 
@@ -26,11 +27,15 @@ const employeeOnly = [authenticate, requireRole("EMPLOYEE")] as const;
 const employerOnly = [authenticate, requireRole("EMPLOYER"), requireApproved] as const;
 
 attendanceRouter.post("/check-in", ...employeeOnly, attendanceLimiter, validate(checkInSchema), checkInHandler);
-attendanceRouter.post("/check-out", ...employeeOnly, attendanceLimiter, checkOutHandler);
+attendanceRouter.post("/check-out", ...employeeOnly, attendanceLimiter, validate(checkOutSchema), checkOutHandler);
 attendanceRouter.get("/today", ...employeeOnly, todayHandler);
 attendanceRouter.get("/me", ...employeeOnly, myHistoryHandler);
 attendanceRouter.get("/me/summary", ...employeeOnly, myMonthlySummaryHandler);
 attendanceRouter.get("/me/week", ...employeeOnly, myWeekSummaryHandler);
+
+// Intended for a screen at the entrance: the employer's dashboard refreshes it
+// continuously and shows it as a QR code.
+attendanceRouter.get("/entry-qr", ...employerOnly, entryQrHandler);
 
 attendanceRouter.get("/employees", ...employerOnly, employeeListHandler);
 attendanceRouter.get("/employees/:employeeId", ...employerOnly, employeeHistoryHandler);

@@ -1,6 +1,14 @@
 import { z } from "zod";
 
+// The scanned value of the QR shown at the entrance (a signed JWT). Required
+// for both check-in and check-out.
+export const qrTokenSchema = z
+  .string()
+  .trim()
+  .min(1, "QR code is required");
+
 export const checkInSchema = z.object({
+  qrToken: qrTokenSchema,
   latitude: z
     .number({ message: "Latitude must be a number" })
     .min(-90, "Latitude must be between -90 and 90")
@@ -11,6 +19,10 @@ export const checkInSchema = z.object({
     .min(-180, "Longitude must be between -180 and 180")
     .max(180, "Longitude must be between -180 and 180")
     .optional(),
+});
+
+export const checkOutSchema = z.object({
+  qrToken: qrTokenSchema,
 });
 
 export const isoDateSchema = z
@@ -129,6 +141,7 @@ export const monthlyReportExportQuerySchema = z.object({
 });
 
 export type CheckInInput = z.infer<typeof checkInSchema>;
+export type CheckOutInput = z.infer<typeof checkOutSchema>;
 export type HistoryQuery = z.infer<typeof historyQuerySchema>;
 export type EmployeeListQuery = z.infer<typeof employeeListQuerySchema>;
 export type EmployeeHistoryQuery = z.infer<typeof historyQuerySchema>;

@@ -7,6 +7,9 @@ import { useTheme } from "@/shared/theme/theme-provider";
 export type CheckButtonProps = {
   state: TodayState;
   working?: boolean;
+  /** When set, check-in is not open (before 08:00 or on a rest day): the
+   * button shows this reason and stays disabled. Check-out is never limited. */
+  lockedLabel?: string;
   onCheckIn?: () => void;
   onCheckOut?: () => void;
 };
@@ -14,7 +17,7 @@ export type CheckButtonProps = {
 const confirmTitle = "Check out";
 const confirmMessage = "Do you want to end your work session and check out now?";
 
-export function CheckButton({ state, working = false, onCheckIn, onCheckOut }: CheckButtonProps) {
+export function CheckButton({ state, working = false, lockedLabel, onCheckIn, onCheckOut }: CheckButtonProps) {
   const { colors } = useTheme();
 
   if (state === "done") {
@@ -24,15 +27,17 @@ export function CheckButton({ state, working = false, onCheckIn, onCheckOut }: C
         style={[styles.done, { backgroundColor: colors.successSoft }]}
       >
         <Ionicons name="checkmark" size={20} color={colors.success} />
-        <Text style={[styles.title, { color: colors.success }]}>You're done for today</Text>
+        <Text style={[styles.title, { color: colors.success }]}>{"You're done for today"}</Text>
       </View>
     );
   }
 
   const isCheckingOut = state === "working";
+  // Only the check-in pill can be locked; check-out has no opening rule.
+  const isLocked = !isCheckingOut && Boolean(lockedLabel);
 
   const handlePress = () => {
-    if (working) return;
+    if (working || isLocked) return;
     if (isCheckingOut) {
       Alert.alert(confirmTitle, confirmMessage, [
         {
@@ -53,15 +58,19 @@ export function CheckButton({ state, working = false, onCheckIn, onCheckOut }: C
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={isCheckingOut ? "Check out" : "Check in"}
-      accessibilityState={{ busy: working, disabled: working }}
+      accessibilityLabel={isCheckingOut ? "Check out" : lockedLabel ?? "Check in"}
+      accessibilityState={{ busy: working, disabled: working || isLocked }}
       onPress={handlePress}
-      disabled={working}
+      disabled={working || isLocked}
       style={({ pressed }) => [
         styles.button,
         pressed && { opacity: 0.85 },
         {
-          backgroundColor: isCheckingOut ? "transparent" : colors.primary,
+          backgroundColor: isCheckingOut
+            ? "transparent"
+            : isLocked
+              ? colors.muted
+              : colors.primary,
           borderColor: isCheckingOut ? colors.destructive : "transparent",
         },
       ]}
@@ -74,17 +83,23 @@ export function CheckButton({ state, working = false, onCheckIn, onCheckOut }: C
       ) : (
         <>
           <Ionicons
-            name={isCheckingOut ? "log-out-outline" : "finger-print-outline"}
+            name={isCheckingOut ? "log-out-outline" : isLocked ? "lock-closed-outline" : "finger-print-outline"}
             size={20}
-            color={isCheckingOut ? colors.destructive : colors.primaryForeground}
+            color={isCheckingOut ? colors.destructive : isLocked ? colors.mutedForeground : colors.primaryForeground}
           />
           <Text
             style={[
               styles.title,
-              { color: isCheckingOut ? colors.destructive : colors.primaryForeground },
+              {
+                color: isCheckingOut
+                  ? colors.destructive
+                  : isLocked
+                    ? colors.mutedForeground
+                    : colors.primaryForeground,
+              },
             ]}
           >
-            {isCheckingOut ? "Check out" : "Check in"}
+            {isCheckingOut ? "Check out" : isLocked ? lockedLabel : "Check in"}
           </Text>
         </>
       )}

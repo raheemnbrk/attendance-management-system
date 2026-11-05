@@ -1,15 +1,20 @@
 import { Prisma, User } from "@prisma/client";
+import { getNowInAlgiers, isRestDay } from "../../shared/config/business";
 import { prisma } from "../../shared/lib/prisma";
 import { AppError } from "../../shared/utils/app-error";
 import {
+  instantToISO,
   isoAddDays,
   isoToUtcMidnight,
   listWorkingDays,
   todayISO,
   utcDateToISO,
 } from "../../shared/utils/date";
+import { assertCheckInAllowed, assertCheckOutAllowed } from "./attendance.rules";
+import { claimEntryTokenUsage, verifyEntryToken } from "./qr-token";
 import type {
   CheckInInput,
+  CheckOutInput,
   EmployeeListQuery,
   EmployeeReportQuery,
   HistoryQuery,
@@ -49,15 +54,32 @@ export function mapAttendance(record: Prisma.AttendanceGetPayload<object>): Atte
   };
 }
 
-export async function checkIn(userId: string, input: CheckInInput): Promise<AttendanceRecord> {
-  const date = isoToUtcMidnight(todayISO());
+/**
+ * Registers a check-in for the employee. Validation order (the first failure
+ * wins): rest day → too early → QR validity → already checked in. Time
+ * decisions use the business clock (getNowInAlgiers), never the phone's.
+ */
+export async function checkIn(
+  userId: string,
+  employerId: string | null,
+  input: CheckInInput,
+): Promise<AttendanceRecord> {
+  const now = getNowInAlgiers();
+  assertCheckInAllowed(now);
+
+  // The QR is only trusted once the day rules passed; any failure collapses
+  // into a generic INVALID_QR so nothing reveals which check failed.
+  const verified = verifyEntryToken(input.qrToken, employerId);
+  claimEntryTokenUsage(userId, verified);
+
+  const date = isoToUtcMidnight(instantToISO(now));
 
   try {
     const record = await prisma.attendance.create({
       data: {
         userId,
         date,
-        checkIn: new Date(),
+        checkIn: now,
         latitude: input.latitude ?? null,
         longitude: input.longitude ?? null,
       },
@@ -72,8 +94,22 @@ export async function checkIn(userId: string, input: CheckInInput): Promise<Atte
   }
 }
 
-export async function checkOut(userId: string): Promise<AttendanceRecord> {
-  const date = isoToUtcMidnight(todayISO());
+/**
+ * Registers a check-out. Not bound by the check-in opening time; rejected on
+ * rest days like check-in.
+ */
+export async function checkOut(
+  userId: string,
+  employerId: string | null,
+  input: CheckOutInput,
+): Promise<AttendanceRecord> {
+  const now = getNowInAlgiers();
+  assertCheckOutAllowed(now);
+
+  const verified = verifyEntryToken(input.qrToken, employerId);
+  claimEntryTokenUsage(userId, verified);
+
+  const date = isoToUtcMidnight(instantToISO(now));
   const record = await prisma.attendance.findUnique({
     where: { userId_date: { userId, date } },
   });
@@ -88,7 +124,7 @@ export async function checkOut(userId: string): Promise<AttendanceRecord> {
 
   const updated = await prisma.attendance.update({
     where: { id: record.id },
-    data: { checkOut: new Date() },
+    data: { checkOut: now },
   });
 
   return mapAttendance(updated);
@@ -310,7 +346,8 @@ export async function getAttendanceSummary(employerId: string, query: SummaryQue
     date: utcDateToISO(date),
     totalEmployees,
     present,
-    absent: totalEmployees - present,
+    // Rest days are never counted as absences.
+    absent: isRestDay(utcDateToISO(date)) ? 0 : totalEmployees - present,
     checkedOut,
   };
 }
@@ -516,7 +553,12 @@ export async function getTrend(employerId: string, days: number): Promise<TrendD
   const trend: TrendDay[] = [];
   for (let day = from; day <= today; day = isoAddDays(day, 1)) {
     const present = presentByDate.get(day) ?? 0;
-    trend.push({ date: day, present, absent: totalEmployees - present });
+    trend.push({
+      date: day,
+      present,
+      // Rest days never appear as absences.
+      absent: isRestDay(day) ? 0 : totalEmployees - present,
+    });
   }
 
   return trend;
