@@ -95,9 +95,59 @@ export const mySummaryQuerySchema = z.object({
   month: monthSchema.optional(),
 });
 
-export const monthlyReportQuerySchema = z.object({
-  month: monthSchema,
+// Longest allowed monthly report window (matches the export limit).
+export const MAX_REPORT_RANGE_DAYS = 366;
+
+function rangeDayCount(from: string, to: string): number {
+  const fromMs = Date.parse(`${from}T00:00:00.000Z`);
+  const toMs = Date.parse(`${to}T00:00:00.000Z`);
+  return (toMs - fromMs) / 86_400_000 + 1;
+}
+
+// The monthly report filters, shared by the report and its export: either a
+// single month (YYYY-MM, current behaviour) or an explicit inclusive date
+// range (from/to). A month cannot be combined with from/to.
+type MonthlyReportFilterShape = {
+  month: z.ZodOptional<typeof monthSchema>;
+  from: z.ZodOptional<typeof isoDateSchema>;
+  to: z.ZodOptional<typeof isoDateSchema>;
+};
+
+const monthlyReportFilterBaseSchema: z.ZodObject<MonthlyReportFilterShape> = z.object({
+  month: monthSchema.optional(),
+  from: isoDateSchema.optional(),
+  to: isoDateSchema.optional(),
 });
+
+function withMonthlyReportRules<TSchema extends z.ZodObject<MonthlyReportFilterShape>>(
+  schema: TSchema,
+) {
+  return schema
+    .refine((data) => Boolean(data.month || data.from || data.to), {
+      message: "month or from and to are required",
+      path: ["month"],
+    })
+    .refine((data) => !data.month || (!data.from && !data.to), {
+      message: "month cannot be combined with from and to",
+      path: ["month"],
+    })
+    .refine((data) => !data.from || !data.to || data.from <= data.to, {
+      message: "from must be before or equal to to",
+      path: ["from"],
+    })
+    .refine(
+      (data) =>
+        !data.from ||
+        !data.to ||
+        rangeDayCount(data.from, data.to) <= MAX_REPORT_RANGE_DAYS,
+      {
+        message: `Date range must be at most ${MAX_REPORT_RANGE_DAYS} days`,
+        path: ["to"],
+      },
+    );
+}
+
+export const monthlyReportQuerySchema = withMonthlyReportRules(monthlyReportFilterBaseSchema);
 
 export const employeeReportQuerySchema = z
   .object({
@@ -135,10 +185,11 @@ export const attendanceExportQuerySchema = z
     path: ["from"],
   });
 
-export const monthlyReportExportQuerySchema = z.object({
-  format: exportFormatSchema.default("csv"),
-  month: monthSchema,
-});
+export const monthlyReportExportQuerySchema = withMonthlyReportRules(
+  monthlyReportFilterBaseSchema.extend({
+    format: exportFormatSchema.default("csv"),
+  }),
+);
 
 export type CheckInInput = z.infer<typeof checkInSchema>;
 export type CheckOutInput = z.infer<typeof checkOutSchema>;

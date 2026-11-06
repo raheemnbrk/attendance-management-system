@@ -8,7 +8,12 @@ import {
   todayISO,
   utcDateToISO,
 } from "../../shared/utils/date";
-import { buildEmployerUserFilter, findOwnedEmployeeOrThrow, getMonthlyReport } from "./attendance.service";
+import {
+  buildEmployerUserFilter,
+  findOwnedEmployeeOrThrow,
+  getMonthlyReport,
+  resolveMonthlyReportRange,
+} from "./attendance.service";
 import type {
   AttendanceExportQuery,
   ExportFormat,
@@ -162,7 +167,15 @@ export async function exportMonthlyReport(
   employerId: string,
   query: MonthlyReportExportQuery,
 ): Promise<ExportFile> {
-  const report = await getMonthlyReport(employerId, query.month);
+  const range = resolveMonthlyReportRange(query, todayISO());
+  const dayCount =
+    (isoToUtcMidnight(range.to).getTime() - isoToUtcMidnight(range.from).getTime()) / 86_400_000 + 1;
+
+  if (dayCount > MAX_EXPORT_DAYS) {
+    throw new AppError(400, `Date range must be at most ${MAX_EXPORT_DAYS} days`);
+  }
+
+  const report = await getMonthlyReport(employerId, query);
 
   const rows: CellValue[][] = report.map((row) => [
     row.name,
@@ -174,10 +187,12 @@ export async function exportMonthlyReport(
     row.forgottenCheckOuts,
   ]);
 
+  const label = query.month ? query.month : `${range.from}_${range.to}`;
+
   return buildFile(
     MONTHLY_HEADERS,
     rows,
     query.format,
-    `attendance_monthly_${query.month}.${query.format}`,
+    `attendance_monthly_${label}.${query.format}`,
   );
 }

@@ -9,7 +9,7 @@ import {
   getTrend,
   listEmployerAttendance,
 } from "./attendance.service";
-import type { ListAttendanceQuery } from "./attendance.service";
+import type { ListAttendanceQuery, MonthlyReportQuery } from "./attendance.service";
 
 export function useAttendanceSummary() {
   return useQuery({ queryKey: ["attendance", "summary"], queryFn: getAttendanceSummary });
@@ -62,9 +62,15 @@ export function useEmployeeReport(employeeId: string, from?: string, to?: string
   });
 }
 
-export function useMonthlyReport(month: string) {
+export function useMonthlyReport(query: MonthlyReportQuery) {
   return useQuery({
-    queryKey: ["attendance", "monthly-report", month],
-    queryFn: () => getMonthlyReport(month),
+    queryKey: [
+      "attendance",
+      "monthly-report",
+      query.month ?? null,
+      query.from ?? null,
+      query.to ?? null,
+    ],
+    queryFn: () => getMonthlyReport(query),
   });
 }

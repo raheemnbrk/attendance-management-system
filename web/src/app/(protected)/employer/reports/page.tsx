@@ -2,16 +2,13 @@
 
 import { useMemo, useState } from "react";
 import { ArrowDown, ArrowUp, ArrowUpDown, CalendarRange, Printer } from "lucide-react";
-import { format, parseISO } from "date-fns";
-import { todayLocalISO } from "@/shared/lib/format";
-import { formatDuration, formatMonth } from "@/shared/lib/format";
+import { formatDate, formatDuration, todayLocalISO } from "@/shared/lib/format";
 import type { MonthlyReportRow } from "@/features/attendance/attendance.types";
 import { useMonthlyReport } from "@/features/attendance/use-attendance";
+import { DateRangePicker, type DateRange } from "@/shared/components/date-range-picker";
 import { EmptyState } from "@/shared/components/empty-state";
 import { ExportMenu } from "@/shared/components/export-menu";
 import { Button } from "@/shared/ui/button";
-import { Calendar } from "@/shared/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
 import { Skeleton } from "@/shared/ui/skeleton";
 import {
   Table,
@@ -76,50 +73,60 @@ function SortHeader({
   );
 }
 
-// Month selector built on the shadcn calendar: pick any day of a month and
-// the month (yyyy-MM) is derived, with dropdown navigation for quick jumps.
-function MonthPicker({
-  month,
-  onChange,
-}: {
-  month: string;
-  onChange: (month: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const selected = parseISO(`${month}-01T00:00:00`);
+const REPORT_RANGE_KEY = "employer.reports.range";
 
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button variant="outline" className="justify-start font-normal" title="Select month">
-          <CalendarRange aria-hidden="true" />
-          {formatMonth(month)}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent align="start" className="w-auto p-0">
-        <Calendar
-          mode="single"
-          captionLayout="dropdown"
-          selected={selected}
-          defaultMonth={selected}
-          onSelect={(date) => {
-            if (date) {
-              onChange(format(date, "yyyy-MM"));
-              setOpen(false);
-            }
-          }}
-        />
-      </PopoverContent>
-    </Popover>
-  );
+// Reports start on the current month-to-date and remember the last viewed
+// range for the session (falls back silently when storage is unavailable).
+function loadPersistedRange(today: string): DateRange {
+  try {
+    const raw = window.sessionStorage.getItem(REPORT_RANGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as DateRange;
+      const from = typeof parsed?.from === "string" ? parsed.from : undefined;
+      const to = typeof parsed?.to === "string" ? parsed.to : undefined;
+      if (from || to) {
+        return { from, to };
+      }
+    }
+  } catch {
+    // A missing/corrupted entry just falls back to the default range.
+  }
+
+  return { from: `${today.slice(0, 7)}-01`, to: today };
+}
+
+function rangeHeading(range: DateRange): string {
+  if (range.from && range.to && range.from <= range.to) {
+    if (range.from === range.to) {
+      return formatDate(range.from);
+    }
+
+    return `${formatDate(range.from)} – ${formatDate(range.to)}`;
+  }
+
+  if (range.from) {
+    return `${formatDate(range.from)} – …`;
+  }
+
+  return "All dates";
 }
 
 export default function ReportsPage() {
-  const [month, setMonth] = useState(() => todayLocalISO().slice(0, 7));
+  const today = todayLocalISO();
+  const [range, setRangeState] = useState<DateRange>(() => loadPersistedRange(today));
   const [sortKey, setSortKey] = useState<SortKey>("totalMinutes");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
 
-  const { data: rows, isPending } = useMonthlyReport(month);
+  const { data: rows, isPending } = useMonthlyReport({ from: range.from, to: range.to });
+
+  function setRange(next: DateRange) {
+    setRangeState(next);
+    try {
+      window.sessionStorage.setItem(REPORT_RANGE_KEY, JSON.stringify(next));
+    } catch {
+      // A blocked storage must not break the page.
+    }
+  }
 
   const sortedRows = useMemo(() => {
     if (!rows) {
@@ -158,23 +165,26 @@ export default function ReportsPage() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Reports</h1>
-          <p className="text-sm text-muted-foreground">Monthly summary per employee.</p>
+          <p className="text-sm text-muted-foreground">Attendance summary per employee.</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => window.print()}>
             <Printer aria-hidden="true" />
             Print
           </Button>
-          <ExportMenu endpoint="attendance/reports/monthly/export" params={{ month }} />
+          <ExportMenu
+            endpoint="attendance/reports/monthly/export"
+            params={{ from: range.from, to: range.to }}
+          />
         </div>
       </div>
 
       <div className="flex flex-col gap-1">
-        <span className="text-xs text-muted-foreground">Month</span>
-        <MonthPicker month={month} onChange={setMonth} />
+        <span className="text-xs text-muted-foreground">Date range</span>
+        <DateRangePicker value={range} onChange={setRange} />
       </div>
 
-      <h2 className="text-lg font-semibold">{formatMonth(month)}</h2>
+      <h2 className="text-lg font-semibold">{rangeHeading(range)}</h2>
 
       {isPending ? (
         <div className="flex flex-col gap-2">
@@ -185,8 +195,8 @@ export default function ReportsPage() {
       ) : !rows || rows.length === 0 ? (
         <EmptyState
           icon={CalendarRange}
-          title="No data for this month"
-          description="There is no attendance data for the selected month."
+          title="No data for this period"
+          description="There is no attendance data in the selected date range."
         />
       ) : (
         <div className="rounded-lg border border-border">

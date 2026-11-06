@@ -18,6 +18,7 @@ import type {
   EmployeeListQuery,
   EmployeeReportQuery,
   HistoryQuery,
+  MonthlyReportQuery,
   SummaryQuery,
 } from "./attendance.schema";
 import { UNASSIGNED_DEPARTMENT } from "./attendance.schema";
@@ -410,16 +411,46 @@ export type MonthlyReportRow = {
   forgottenCheckOuts: number;
 };
 
+// Resolves the report window (inclusive on both ends) from the query: a month
+// wins when provided; otherwise from/to with today and from filling the
+// missing edges. Working days are only counted up to today so future days are
+// not counted as absences.
+export type MonthlyReportRange = {
+  from: string;
+  to: string;
+  workingDaysEnd: string;
+};
+
+export function resolveMonthlyReportRange(
+  query: Pick<MonthlyReportQuery, "month"> & {
+    from?: string;
+    to?: string;
+  },
+  today: string,
+): MonthlyReportRange {
+  if (query.month) {
+    const from = `${query.month}-01`;
+    const to = monthLastDay(query.month);
+    return { from, to, workingDaysEnd: to < today ? to : today };
+  }
+
+  // Missing edges: "to-only" is that single day; "from-only" is open-ended
+  // (until today); an empty query collapses to today (also rejected by the
+  // schema, which always requires month or from/to).
+  const to = query.to ?? today;
+  const from = query.from ?? to;
+  return { from, to, workingDaysEnd: to < today ? to : today };
+}
+
 export async function getMonthlyReport(
   employerId: string,
-  month: string,
+  query: MonthlyReportQuery,
 ): Promise<MonthlyReportRow[]> {
   const today = todayISO();
-  const monthStart = `${month}-01`;
-  const monthEnd = monthLastDay(month);
+  const { from, to, workingDaysEnd } = resolveMonthlyReportRange(query, today);
+
   // Count working days only up to today so future days are not counted as absences.
-  const rangeEnd = monthEnd < today ? monthEnd : today;
-  const workingDays = monthStart <= rangeEnd ? listWorkingDays(monthStart, rangeEnd) : [];
+  const workingDays = from <= workingDaysEnd ? listWorkingDays(from, workingDaysEnd) : [];
 
   const [employees, records] = await Promise.all([
     prisma.user.findMany({
@@ -430,7 +461,7 @@ export async function getMonthlyReport(
     prisma.attendance.findMany({
       where: {
         user: { employerId, role: "EMPLOYEE" as const },
-        date: { gte: isoToUtcMidnight(monthStart), lte: isoToUtcMidnight(monthEnd) },
+        date: { gte: isoToUtcMidnight(from), lte: isoToUtcMidnight(to) },
       },
     }),
   ]);

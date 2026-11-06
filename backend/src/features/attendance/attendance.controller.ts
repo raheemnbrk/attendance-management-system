@@ -102,7 +102,7 @@ export const summaryHandler = asyncHandler(async (req: Request, res: Response) =
 
 export const monthlyReportHandler = asyncHandler(async (req: Request, res: Response) => {
   const query = monthlyReportQuerySchema.parse(req.query);
-  const result = await getMonthlyReport(req.user!.id, query.month);
+  const result = await getMonthlyReport(req.user!.id, query);
   res.status(200).json({ success: true, data: result });
 });
 

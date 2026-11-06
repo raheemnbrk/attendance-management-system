@@ -72,10 +72,22 @@ export async function getEmployeeReport(
   });
 }
 
-export async function getMonthlyReport(month: string): Promise<MonthlyReportRow[]> {
+export type MonthlyReportQuery = {
+  month?: string;
+  from?: string;
+  to?: string;
+};
+
+export async function getMonthlyReport(
+  query: MonthlyReportQuery,
+): Promise<MonthlyReportRow[]> {
   return apiRequest<MonthlyReportRow[]>({
     method: "GET",
     url: "/attendance/reports/monthly",
-    params: { month },
+    params: {
+      ...(query.month ? { month: query.month } : {}),
+      ...(query.from ? { from: query.from } : {}),
+      ...(query.to ? { to: query.to } : {}),
+    },
   });
 }
