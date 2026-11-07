@@ -7,12 +7,40 @@ import { useAuthStore } from "@/features/auth/auth.store";
 import { useEntryQr } from "@/features/attendance/use-attendance";
 import { QueryErrorAlert } from "@/shared/components/query-error-alert";
 import { Skeleton } from "@/shared/ui/skeleton";
+import { ApiError } from "@/shared/types/api";
 
 // Entrance QR display: meant to stay open on a screen at the door. The token
 // lives 30s server-side; the dashboard mints a new one every ~25s (paused
 // while the tab is hidden, refreshed immediately when it comes back) and the
 // ring shows how much time is left before the refresh.
 const REFRESH_HEADROOM_MS = 2_000;
+
+// Status-aware, human copy for the entrance screen. Only these texts are
+// shown — no URLs, no raw status codes; the backend's own 403 wording is kept
+// because it carries the real reason (unapproved, suspended, password gate).
+function friendlyEntryQrError(error: unknown): string {
+  const status = error instanceof ApiError ? error.status : undefined;
+
+  switch (status) {
+    case 0:
+      return "Cannot reach the attendance server. Check the connection and try again.";
+    case 401:
+      return "You are not signed in or the session has expired. Sign in with an employer account and try again.";
+    case 403:
+      return "This screen is for approved employers only. "
+        + (error instanceof ApiError && error.message ? error.message : "Use an employer account.");
+    case 404:
+      return "The attendance server does not offer the entry-code endpoint. The backend deployment is probably out of date; try again after the server is redeployed.";
+    case 429:
+      return "Too many entry-code requests in a short time. Wait a moment and try again.";
+  }
+
+  if (typeof status === "number" && status >= 500) {
+    return "The attendance server had a problem loading the entry code. Try again in a moment.";
+  }
+
+  return "Failed to load the entry code. Try again.";
+}
 
 function clamp01(value: number): number {
   return Math.min(1, Math.max(0, value));
@@ -68,6 +96,7 @@ export function EntryQrPage() {
           <div className="w-full max-w-xl">
             <QueryErrorAlert
               title="Could not load the entry code"
+              description={friendlyEntryQrError(error)}
               error={error}
               onRetry={() => void refetch()}
               isRetrying={isFetching}

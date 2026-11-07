@@ -7,19 +7,22 @@ import { Button } from "@/shared/ui/button";
 
 // Destructive alert for a failed query: shows the language message the server
 // sent (no generic fallback copy) and, given an onRetry handler, a retry
-// button wired to the query refetch.
+// button wired to the query refetch. A caller-provided description replaces
+// the raw server message when it needs friendlier, status-aware copy.
 export function QueryErrorAlert({
   title,
   error,
   onRetry,
   isRetrying = false,
   className,
+  description,
 }: {
   title: string;
   error: unknown;
   onRetry?: () => void;
   isRetrying?: boolean;
   className?: string;
+  description?: string;
 }) {
   return (
     <Alert variant="destructive" className={className}>
@@ -27,7 +30,7 @@ export function QueryErrorAlert({
       <AlertTitle>{title}</AlertTitle>
       <div className="mt-2 flex items-center justify-between gap-3 md:flex-row">
         <AlertDescription className="min-w-0 break-words">
-          {apiErrorMessage(error)}
+          {description ?? apiErrorMessage(error)}
         </AlertDescription>
         {onRetry ? (
           <Button

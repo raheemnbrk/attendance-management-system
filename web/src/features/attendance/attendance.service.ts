@@ -1,4 +1,5 @@
 import { apiRequest } from "@/shared/lib/api";
+import { ATTENDANCE_API } from "@/shared/lib/endpoints";
 import type {
   AttendanceSummary,
   EmployeeAttendanceRecord,
@@ -23,17 +24,17 @@ export type ListAttendanceQuery = {
 };
 
 export async function getEntryQr(): Promise<EntryQr> {
-  return apiRequest<EntryQr>({ method: "GET", url: "/attendance/entry-qr" });
+  return apiRequest<EntryQr>({ method: "GET", url: ATTENDANCE_API.entryQr });
 }
 
 export async function getAttendanceSummary(): Promise<AttendanceSummary> {
-  return apiRequest<AttendanceSummary>({ method: "GET", url: "/attendance/summary" });
+  return apiRequest<AttendanceSummary>({ method: "GET", url: ATTENDANCE_API.summary });
 }
 
 export async function getTrend(days: number): Promise<TrendDay[]> {
   return apiRequest<TrendDay[]>({
     method: "GET",
-    url: "/attendance/trend",
+    url: ATTENDANCE_API.trend,
     params: { days },
   });
 }
@@ -43,7 +44,7 @@ export async function listEmployerAttendance(
 ): Promise<Paginated<EmployeeAttendanceRecord>> {
   return apiRequest<Paginated<EmployeeAttendanceRecord>>({
     method: "GET",
-    url: "/attendance/employees",
+    url: ATTENDANCE_API.employerAttendance,
     params: {
       ...(query.page ? { page: query.page } : {}),
       ...(query.limit ? { limit: query.limit } : {}),
@@ -64,7 +65,7 @@ export async function getEmployeeReport(
 ): Promise<EmployeeReport> {
   return apiRequest<EmployeeReport>({
     method: "GET",
-    url: `/attendance/reports/employee/${employeeId}`,
+    url: ATTENDANCE_API.employeeReport(employeeId),
     params: {
       ...(from ? { from } : {}),
       ...(to ? { to } : {}),
@@ -83,7 +84,7 @@ export async function getMonthlyReport(
 ): Promise<MonthlyReportRow[]> {
   return apiRequest<MonthlyReportRow[]>({
     method: "GET",
-    url: "/attendance/reports/monthly",
+    url: ATTENDANCE_API.monthlyReport,
     params: {
       ...(query.month ? { month: query.month } : {}),
       ...(query.from ? { from: query.from } : {}),

@@ -96,32 +96,55 @@ function Calendar({
         day_button: cn(
           buttonVariants({ variant: "ghost" }),
           "size-9 w-full p-0 font-normal aria-selected:opacity-100",
+          // Hover keeps numbers readable on both themes: a soft teal wash with
+          // plain foreground text (replaces the gray accent defaults whose
+          // foreground-on-teal pairs lose contrast on selected days).
+          "hover:bg-primary/10 hover:text-foreground",
           classNames?.day_button,
           defaultClassNames.day_button,
         ),
-        range_start: cn("rounded-l-md bg-accent", classNames?.range_start),
+        // Range presentation, theme-safe by construction: solid teal endpoints
+        // with --primary-foreground text, a translucent teal field with
+        // --foreground text for the inside days (the trailing "!" beats any
+        // muted rest-day styling so numbers stay >= 4.5:1 in light and dark).
+        range_start: cn(
+          "rounded-l-md bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground",
+          classNames?.range_start,
+        ),
+        range_end: cn(
+          "rounded-r-md bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground",
+          classNames?.range_end,
+        ),
         range_middle: cn(
-          "rounded-none aria-selected:bg-accent aria-selected:text-accent-foreground",
+          "rounded-none bg-primary/20 text-foreground!",
           classNames?.range_middle,
           defaultClassNames.range_middle,
         ),
-        range_end: cn("rounded-r-md bg-accent", classNames?.range_end),
         selected: cn(
           "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
+          // The day button only sees ghost's hover colors; this keeps solid
+          // teal days on their own foreground text while hovering.
+          "[&>button:hover]:text-primary-foreground",
           classNames?.selected,
         ),
+        // Today gets a teal outline instead of a filled background so its
+        // number can never blend into a highlighted range behind it.
         today: cn(
-          "rounded-md bg-accent text-accent-foreground data-[selected=true]:rounded-none",
+          "rounded-md ring-1 ring-inset ring-primary data-[selected=true]:rounded-none",
           classNames?.today,
           defaultClassNames.today,
         ),
+        // An outside day can still be a range endpoint; keep its number in
+        // --primary-foreground there instead of the (near-background) accent
+        // tone the default used.
         outside: cn(
-          "text-muted-foreground aria-selected:text-accent-foreground",
+          "text-muted-foreground aria-selected:text-primary-foreground",
           classNames?.outside,
           defaultClassNames.outside,
         ),
+        // Muted but clearly legible on both themes.
         disabled: cn(
-          "text-muted-foreground opacity-50",
+          "text-muted-foreground opacity-60",
           classNames?.disabled,
           defaultClassNames.disabled,
         ),

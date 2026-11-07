@@ -2,13 +2,17 @@
 
 import type { AxiosResponse } from "axios";
 import { api } from "@/shared/lib/api";
+import { ATTENDANCE_API } from "@/shared/lib/endpoints";
 import { ApiError } from "@/shared/types/api";
 
 export type ExportParams = Record<string, string | undefined>;
 
-// Backend endpooints (mounted under /api/attendance) as used by the shared
-// axios client, whose "/api" base URL is proxied to the backend by Next.
-export type ExportEndpoint = "attendance/export" | "attendance/reports/monthly/export";
+// Backend export endpoints (source of truth: the shared API constants file),
+// mounted under /api/attendance as used by the shared axios client, whose
+// "/api" base URL is proxied to the backend by Next.
+export type ExportEndpoint =
+  | typeof ATTENDANCE_API.attendanceExport
+  | typeof ATTENDANCE_API.monthlyReportExport;
 
 const FALLBACK_FILENAMES: Record<ExportEndpoint, string> = {
   "attendance/export": "attendance-export",

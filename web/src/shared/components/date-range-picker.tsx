@@ -133,17 +133,15 @@ const pillActive =
   "border-primary bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground";
 
 // Rest days (Fri/Sat) render muted while staying selectable; the guard keeps
-// the teal endpoint styling intact on selected rest days.
+// the teal endpoint styling intact on selected rest days (the shared calendar's
+// range_middle text override wins inside a range so numbers stay readable).
 const REST_DAY_CLASS =
   "[&:not([data-selected=true])]:text-muted-foreground [&:not([data-selected=true])]:opacity-60";
 
-// Teal range presentation: solid endpoints, tinted middle, square inner
-// buttons (all coloring happens on the day cells).
+// All coloring happens on the day cells (shared calendar defaults); the day
+// buttons only need to stay square so the teal range reads as one bar.
 const RANGE_CLASS_NAMES = {
   day_button: "rounded-none",
-  range_start: "rounded-l-md bg-primary text-primary-foreground hover:bg-primary",
-  range_end: "rounded-r-md bg-primary text-primary-foreground hover:bg-primary",
-  range_middle: "rounded-none bg-primary/15 text-foreground",
 } as const;
 
 export function DateRangePicker({
