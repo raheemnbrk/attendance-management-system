@@ -128,9 +128,9 @@ function rangeLabel(range: DateRange): string {
 }
 
 const pillBase =
-  "rounded-full border border-border px-2.5 py-1 text-xs font-medium text-foreground/80 transition-colors hover:bg-muted hover:text-foreground";
+  "rounded-full border border-border bg-popover px-3 py-1.5 text-xs font-medium text-foreground/80 transition-colors hover:bg-muted hover:text-foreground";
 const pillActive =
-  "border-primary bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground";
+  "border-primary bg-primary font-semibold text-primary-foreground shadow-sm hover:bg-primary hover:text-primary-foreground";
 
 // Rest days (Fri/Sat) render muted while staying selectable; the guard keeps
 // the teal endpoint styling intact on selected rest days (the shared calendar's
@@ -171,7 +171,7 @@ export function DateRangePicker({
         </Button>
       </PopoverTrigger>
       {open ? (
-        <PopoverContent align="start" className="w-auto max-w-[min(92vw,21rem)] p-0">
+        <PopoverContent align="start" className="w-auto max-w-[min(92vw,23rem)] p-0 shadow-lg">
           {/* The body owns the selection draft; it remounts on every open and
               starts from the applied value, so a half-drawn range never leaks
               outside the popover. */}
@@ -234,7 +234,7 @@ function RangePickerBody({
 
   return (
     <>
-      <div className="flex flex-wrap gap-1.5 px-3 pt-3">
+      <div className="flex flex-wrap gap-2 px-4 pt-4">
         {PRESETS.map((preset) => {
           const active = activeKey === preset.key;
           return (
@@ -282,11 +282,11 @@ function RangePickerBody({
         modifiersClassNames={{ restDay: REST_DAY_CLASS }}
         classNames={RANGE_CLASS_NAMES}
       />
-      <div className="border-t border-border px-3 py-2 text-xs text-muted-foreground">
-        <span className="inline-flex items-center gap-1.5">
+      <div className="border-t border-border px-4 py-3 text-xs text-muted-foreground">
+        <span className="inline-flex items-center gap-2 font-medium">
           <span
             aria-hidden="true"
-            className="size-2.5 rounded-full bg-muted-foreground/40"
+            className="size-2.5 rounded-full bg-muted-foreground/50"
           />
           Rest days (Fri &amp; Sat)
         </span>

@@ -27,7 +27,7 @@ function Calendar({
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
-      className={cn("bg-background p-3", className)}
+      className={cn("bg-background p-4", className)}
       captionLayout={captionLayout}
       classNames={{
         ...classNames,
@@ -41,28 +41,28 @@ function Calendar({
         ),
         button_previous: cn(
           buttonVariants({ variant: buttonVariant }),
-          "size-9 p-0 aria-disabled:opacity-50",
+          "size-10 p-0 aria-disabled:opacity-50",
           classNames?.button_previous,
           defaultClassNames.button_previous,
         ),
         button_next: cn(
           buttonVariants({ variant: buttonVariant }),
-          "size-9 p-0 aria-disabled:opacity-50",
+          "size-10 p-0 aria-disabled:opacity-50",
           classNames?.button_next,
           defaultClassNames.button_next,
         ),
         month_caption: cn(
-          "flex h-9 items-center justify-center gap-1 text-sm font-medium",
+          "flex h-10 items-center justify-center gap-2 text-[0.95rem] font-semibold",
           classNames?.month_caption,
           defaultClassNames.month_caption,
         ),
         dropdowns: cn(
-          "flex h-9 w-full items-center justify-center gap-1.5 text-sm font-medium",
+          "flex h-10 w-full items-center justify-center gap-1.5 text-[0.95rem] font-semibold",
           classNames?.dropdowns,
           defaultClassNames.dropdowns,
         ),
         dropdown_root: cn(
-          "relative rounded-md border border-input has-focus:border-transparent has-focus:ring-2 has-focus:ring-ring/50",
+          "relative rounded-lg border border-input has-focus:border-transparent has-focus:ring-2 has-focus:ring-ring/50",
           classNames?.dropdown_root,
           defaultClassNames.dropdown_root,
         ),
@@ -71,15 +71,15 @@ function Calendar({
           classNames?.dropdown,
           defaultClassNames.dropdown,
         ),
-        caption_label: cn("py-0.5 text-sm font-medium", classNames?.caption_label, defaultClassNames.caption_label),
+        caption_label: cn("py-0.5 text-[0.95rem] font-semibold", classNames?.caption_label, defaultClassNames.caption_label),
         month_grid: cn("w-full border-collapse", classNames?.month_grid, defaultClassNames.month_grid),
-        weekdays: cn("flex", classNames?.weekdays, defaultClassNames.weekdays),
+        weekdays: cn("flex pb-1", classNames?.weekdays, defaultClassNames.weekdays),
         weekday: cn(
-          "flex-1 select-none rounded-md text-[0.8rem] font-normal text-muted-foreground",
+          "flex-1 select-none rounded-md pb-1 pt-2 text-[0.75rem] font-semibold uppercase tracking-wider text-muted-foreground",
           classNames?.weekday,
           defaultClassNames.weekday,
         ),
-        weeks: cn("flex flex-col gap-1", classNames?.weeks, defaultClassNames.weeks),
+        weeks: cn("flex flex-col gap-1.5", classNames?.weeks, defaultClassNames.weeks),
         week: cn("mt-0.5 flex w-full", classNames?.week, defaultClassNames.week),
         week_number: cn(
           "text-[0.8rem] font-medium text-muted-foreground",
@@ -88,17 +88,19 @@ function Calendar({
         ),
         day: cn(
           "group/day relative aspect-square h-full w-full select-none p-0 text-center",
-          "[&:first-child[data-selected=true]_button]:rounded-l-md [&:last-child[data-selected=true]_button]:rounded-r-md",
+          "[&:first-child[data-selected=true]_button]:rounded-l-xl [&:last-child[data-selected=true]_button]:rounded-r-xl",
           classNames?.day,
           defaultClassNames.day,
         ),
         day_button: cn(
           buttonVariants({ variant: "ghost" }),
-          "size-9 w-full p-0 font-normal aria-selected:opacity-100",
+          // Larger cells (min-w keeps the table roomy even for 1-digit days)
+          // with slightly heavier numerals — easier to read and to tap.
+          "size-10 min-w-10 w-full p-0 text-[0.925rem] font-medium aria-selected:opacity-100",
           // Hover keeps numbers readable on both themes: a soft teal wash with
           // plain foreground text (replaces the gray accent defaults whose
           // foreground-on-teal pairs lose contrast on selected days).
-          "hover:bg-primary/10 hover:text-foreground",
+          "hover:bg-primary/15 hover:text-foreground",
           classNames?.day_button,
           defaultClassNames.day_button,
         ),
@@ -107,20 +109,20 @@ function Calendar({
         // --foreground text for the inside days (the trailing "!" beats any
         // muted rest-day styling so numbers stay >= 4.5:1 in light and dark).
         range_start: cn(
-          "rounded-l-md bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground",
+          "rounded-l-xl bg-primary text-primary-foreground shadow-sm hover:bg-primary hover:text-primary-foreground",
           classNames?.range_start,
         ),
         range_end: cn(
-          "rounded-r-md bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground",
+          "rounded-r-xl bg-primary text-primary-foreground shadow-sm hover:bg-primary hover:text-primary-foreground",
           classNames?.range_end,
         ),
         range_middle: cn(
-          "rounded-none bg-primary/20 text-foreground!",
+          "rounded-none bg-primary/25 text-foreground!",
           classNames?.range_middle,
           defaultClassNames.range_middle,
         ),
         selected: cn(
-          "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
+          "bg-primary text-primary-foreground shadow-sm hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
           // The day button only sees ghost's hover colors; this keeps solid
           // teal days on their own foreground text while hovering.
           "[&>button:hover]:text-primary-foreground",
@@ -129,7 +131,7 @@ function Calendar({
         // Today gets a teal outline instead of a filled background so its
         // number can never blend into a highlighted range behind it.
         today: cn(
-          "rounded-md ring-1 ring-inset ring-primary data-[selected=true]:rounded-none",
+          "rounded-xl ring-1 ring-inset ring-primary data-[selected=true]:rounded-none",
           classNames?.today,
           defaultClassNames.today,
         ),
