@@ -3,6 +3,7 @@ import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
 import { env } from "./config/env";
+import { getBuildInfo } from "./build-info";
 import { errorMiddleware, notFoundMiddleware } from "./middleware/error.middleware";
 import { globalLimiter } from "./middleware/rate-limit.middleware";
 import { userRouter } from "../features/user/user.routes";
@@ -24,7 +25,7 @@ export function createApp() {
   app.use(express.json());
 
   app.get("/health", (_req, res) => {
-    res.status(200).json({ success: true, data: { status: "ok" } });
+    res.status(200).json({ success: true, data: getBuildInfo() });
   });
 
   app.use("/api", globalLimiter);
