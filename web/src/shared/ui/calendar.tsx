@@ -6,7 +6,6 @@ import type { VariantProps } from "class-variance-authority";
 import type { ComponentProps } from "react";
 import { buttonVariants } from "./button";
 import { cn } from "../lib/utils";
-import "react-day-picker/style.css";
 
 type CalendarProps = ComponentProps<typeof DayPicker> & {
   buttonVariant?: VariantProps<typeof buttonVariants>["variant"];
