@@ -1,8 +1,7 @@
 import { Card } from "@/shared/components/ui/Card";
 import { spacing } from "@/shared/theme/colors";
 import type { ReactNode } from "react";
-import type { StyleProp, ViewStyle } from "react-native";
-import { StyleSheet } from "react-native";
+import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 
 type AuthCardProps = {
   children: ReactNode;
@@ -14,7 +13,7 @@ type AuthCardProps = {
 export function AuthCard({ children, style }: AuthCardProps) {
   return (
     <Card padding={spacing.xl} style={[styles.card, style]}>
-      {children}
+      <View style={styles.body}>{children}</View>
     </Card>
   );
 }
@@ -22,5 +21,8 @@ export function AuthCard({ children, style }: AuthCardProps) {
 const styles = StyleSheet.create({
   card: {
     width: "100%",
+  },
+  body: {
+    gap: spacing.md,
   },
 });

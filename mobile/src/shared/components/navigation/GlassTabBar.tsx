@@ -152,7 +152,11 @@ export function GlassTabBar({ state, descriptors, insets, navigateToTab }: Botto
             ) : (
               <Ionicons name="ellipse" size={ICON_SIZE} color={tint as string} />
             )}
-            <Text numberOfLines={1} style={[styles.tabLabel, { color: tint }]}>
+            <Text
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              style={[styles.tabLabel, { color: tint }]}
+            >
               {title}
             </Text>
           </Pressable>
@@ -279,7 +283,6 @@ const styles = StyleSheet.create({
   tabLabel: {
     fontSize: fontSize.xs,
     fontWeight: "600",
-    maxWidth: 72,
   },
   tabs: {
     flex: 1,

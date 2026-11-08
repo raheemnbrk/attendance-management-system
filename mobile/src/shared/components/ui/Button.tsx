@@ -114,7 +114,11 @@ export function Button({
       ) : (
         <>
           {icon ? <>{icon}</> : null}
-          <Text style={[styles.title, { fontSize: size === "lg" ? fontSize.md + 1 : fontSize.md }, variantStyle.text]}>
+          <Text
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            style={[styles.title, { fontSize: size === "lg" ? fontSize.md + 1 : fontSize.md }, variantStyle.text]}
+          >
             {title}
           </Text>
         </>
