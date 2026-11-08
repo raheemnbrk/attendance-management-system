@@ -27,7 +27,7 @@ export function CheckButton({ state, working = false, lockedLabel, onCheckIn, on
         style={[styles.done, { backgroundColor: colors.successSoft }]}
       >
         <Ionicons name="checkmark" size={20} color={colors.success} />
-        <Text style={[styles.title, { color: colors.success }]}>{"You're done for today"}</Text>
+        <Text style={[styles.title, { color: colors.success }]}>{"You are done for today"}</Text>
       </View>
     );
   }

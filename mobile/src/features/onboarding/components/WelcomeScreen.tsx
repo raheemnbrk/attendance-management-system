@@ -39,7 +39,7 @@ export function WelcomeScreen() {
           </View>
           <AuthTitles title="Attendance made simple" />
           <Text style={[styles.copy, { color: colors.mutedForeground }]}>
-            Clock in and out in seconds. Sign in with the account your employer gave you.
+            Check in and out in seconds. Sign in with the account your employer gave you.
           </Text>
           <PrimaryButton
             title="Get Started"

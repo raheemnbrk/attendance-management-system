@@ -82,7 +82,7 @@ export function TodayScreen({ user }: TodayScreenProps) {
     progress = Math.min(1, elapsed / EXPECTED_WORK_MS);
   } else if (state === "done" && record) {
     ringLabel = formatWorkedMinutes(record.workedMinutes ?? null);
-    ringCaption = "You're done for today";
+    ringCaption = "You are done for today";
     progress = 1;
   }
 
